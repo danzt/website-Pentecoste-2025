@@ -37,6 +37,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
   const [showTitle, setShowTitle] = useState(true);
   const [showVideo, setShowVideo] = useState(true);
   const [videoStarted, setVideoStarted] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   // Sincronizar estado con ref
   useEffect(() => {
@@ -158,46 +159,117 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
     return () => clearInterval(timer);
   }, [EVENT_DATE]);
 
-  // 5. CARGAR REPRODUCTOR VIMEO (SOLO DESKTOP)
+  // 5. INICIALIZAR REPRODUCTOR DE VIMEO
   useEffect(() => {
-    if (isMobile) {
-      if (playerRef.current) {
-        playerRef.current.destroy().catch(e => console.warn("Error destroying player on mobile", e));
-        playerRef.current = null;
-      }
-      setPlayerReady(false);
-      return;
-    }
+    const initVimeoPlayer = async () => {
+      try {
+        // 1. Limpiar cualquier instancia previa
+        if (playerRef.current) {
+          try {
+            await playerRef.current.destroy();
+          } catch (e) {
+            console.warn('Error al destruir el reproductor anterior:', e);
+          }
+          playerRef.current = null;
+        }
 
-    if (window.Vimeo && !playerReady) {
-      setPlayerReady(true);
-      return;
-    }
-    
-    if (!window.Vimeo && !document.querySelector('script[src="https://player.vimeo.com/api/player.js"]')) {
-      const script = document.createElement('script');
-      script.src = 'https://player.vimeo.com/api/player.js';
-      script.async = true;
-      script.onload = () => {
-        if (!isMobile) {
+        // 2. Asegurarse de que el elemento contenedor existe
+        if (!videoRef.current) {
+          console.error('El elemento contenedor del video no existe');
+          return;
+        }
+
+        // 3. Cargar el SDK de Vimeo si no está disponible
+        if (!window.Vimeo) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://player.vimeo.com/api/player.js';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+          });
+        }
+
+        // 4. Esperar un momento para asegurarse de que el SDK está completamente cargado
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 5. Crear el iframe manualmente
+        const iframe = document.createElement('iframe');
+        const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
+        iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0`);
+        iframe.setAttribute('frameborder', '0');
+        iframe.setAttribute('allowfullscreen', 'true');
+        iframe.setAttribute('allow', 'autoplay; fullscreen');
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '0';
+        iframe.style.left = '0';
+        
+        // 6. Limpiar el contenedor y agregar el iframe
+        while (videoRef.current.firstChild) {
+          videoRef.current.removeChild(videoRef.current.firstChild);
+        }
+        videoRef.current.appendChild(iframe);
+
+        // 7. Inicializar el reproductor
+        playerRef.current = new window.Vimeo.Player(iframe, {
+          id: videoId,
+          background: true,
+          autoplay: true,
+          loop: true,
+          muted: true,
+          controls: false,
+          responsive: true,
+          dnt: true,
+          playsinline: true,
+          autopause: false,
+          transparent: false
+        });
+
+        // 8. Esperar a que el reproductor esté listo
+        await playerRef.current.ready();
+        
+        // 9. Configurar eventos
+        playerRef.current.on('loaded', () => {
+          setVideoLoaded(true);
           setPlayerReady(true);
-        }
-      };
-      script.onerror = () => {
-        console.error("Failed to load Vimeo Player API.");
+        });
+
+        playerRef.current.on('play', () => {
+        });
+
+        playerRef.current.on('error', (error) => {
+          console.error('Error en el reproductor:', error);
+        });
+
+        // 10. Iniciar reproducción
+        await playerRef.current.play();
+
+      } catch (error) {
+        console.error('Error al inicializar el reproductor de Vimeo:', error);
+        setVideoLoaded(false);
         setPlayerReady(false);
+
+        // Reintentar la inicialización después de un delay
+        setTimeout(initVimeoPlayer, 2000);
       }
-      document.body.appendChild(script);
-      
-      return () => {
-        if (script.parentNode) {
-          document.body.removeChild(script);
+    };
+
+    initVimeoPlayer();
+
+    return () => {
+      if (playerRef.current) {
+        try {
+          playerRef.current.unload();
+          playerRef.current.destroy();
+        } catch (e) {
+          console.warn('Error al limpiar el reproductor:', e);
         }
-      };
-    } else if (window.Vimeo && !playerReady && !isMobile) {
-      setPlayerReady(true);
-    }
-  }, [isMobile, playerReady]);
+      }
+    };
+  }, [isMobile]);
 
   // 6. EFECTO CINEMATOGRÁFICO PRINCIPAL
   useEffect(() => {
@@ -219,13 +291,46 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
 
     const initPlayerAndTimeline = async () => {
       try {
-        if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-          await playerRef.current.destroy();
-        }
-        playerRef.current = new window.Vimeo.Player(videoRef.current);
-        await playerRef.current.ready();
+        const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
+        
+        // Verificar si ya tenemos un reproductor válido
+        if (!playerRef.current || typeof playerRef.current.destroy !== 'function') {
+          // Crear el iframe manualmente si no existe
+          const iframe = document.createElement('iframe');
+          iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0`);
+          iframe.setAttribute('frameborder', '0');
+          iframe.setAttribute('allowfullscreen', 'true');
+          iframe.setAttribute('allow', 'autoplay; fullscreen');
+          iframe.style.width = '100%';
+          iframe.style.height = '100%';
+          iframe.style.position = 'absolute';
+          iframe.style.top = '0';
+          iframe.style.left = '0';
+          
+          // Limpiar el contenedor y agregar el iframe
+          while (videoRef.current.firstChild) {
+            videoRef.current.removeChild(videoRef.current.firstChild);
+          }
+          videoRef.current.appendChild(iframe);
 
+          playerRef.current = new window.Vimeo.Player(iframe, {
+            id: parseInt(videoId),
+            background: true,
+            autoplay: true,
+            loop: true,
+            muted: true,
+            controls: false,
+            responsive: true,
+            dnt: true,
+            playsinline: true,
+            autopause: false,
+            transparent: false
+          });
+        }
+
+        await playerRef.current.ready();
         const videoDuration = await playerRef.current.getDuration();
+        
         if (!videoDuration || videoDuration <= 0) {
           console.error("Cinematic: Could not get valid video duration. Duration:", videoDuration);
           return;
@@ -256,8 +361,8 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           .call(() => {
             setTimeout(() => {
               setVideoStarted(true);
-              playerRef.current.play().catch(e => console.error("Error playing video via API:", e));
-            }, 500); // Espera 0.5s antes de iniciar el video
+              playerRef.current?.play().catch(e => console.error("Error playing video via API:", e));
+            }, 500);
           }, null, ">+0.1")
           .to({}, { duration: videoDuration + 0.5 }, ">")
           .call(() => {
@@ -269,32 +374,15 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           .to(titleRef.current, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
 
         masterTimelineRef.current.play();
+
       } catch (error) {
         console.error("Error initializing Vimeo player or timeline:", error);
-        if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-          playerRef.current.destroy().catch(e => console.warn("Destroy failed after error", e));
-          playerRef.current = null;
-        }
       }
     };
 
     initPlayerAndTimeline();
 
-    // Cuando termina el video, NO lo repite, muestra el logo
-    const handleEnded = () => {
-      setShowVideo(false);
-      setShowEventLogo(true);
-      setShowTitle(false);
-      setVideoStarted(false);
-    };
-    if (playerRef.current && typeof playerRef.current.on === 'function') {
-      playerRef.current.on('ended', handleEnded);
-    }
-
     return () => {
-      if (playerRef.current && typeof playerRef.current.off === 'function') {
-        playerRef.current.off('ended', handleEnded);
-      }
       if (masterTimelineRef.current) {
         masterTimelineRef.current.kill();
         masterTimelineRef.current = null;
@@ -384,48 +472,19 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       ref={headerRef}
       className="relative w-full h-screen overflow-hidden z-30"
     >
-      {/* Video de fondo / Fallback para móviles */}
-      {showVideo && (
-        <div className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700" style={{ opacity: showVideo ? 1 : 0 }}>
-          <iframe
-            ref={videoRef}
-            src={`https://player.vimeo.com/video/${isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID}?background=1&autoplay=1&loop=0&muted=1&autopause=0&controls=0&dnt=1`}
-            className="absolute inset-0 w-full h-full object-cover"
-            frameBorder="0"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-            title={`Vimeo Video Background ${isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID}`}
-            loading="eager"
-          />
-          <div className="absolute inset-0 bg-black opacity-30"></div>
-        </div>
-      )}
-      {!isMobile && showEventLogo && (
+      {/* Video de fondo */}
+      <div className="absolute inset-0 w-full h-full pointer-events-none">
         <div
-          ref={eventLogoRef}
-          className="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-700"
-          style={{ opacity: showEventLogo ? 1 : 0, background: 'black' }}
-        >
-          <img
-            src={EVENT_LOGO}
-            alt="Logo Oficial Pentecostés Evento"
-            className="w-64 md:w-96 h-auto"
-            style={{ filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.8))' }}
-          />
-        
-        </div>
-      )}
-      {isMobile && (
-        <div className="absolute inset-0 w-full h-full">
-          {/* <img
-            src={BACKGROUND_IMAGE}
-            alt="Background Pentecostes Event"
-            className="w-full h-full object-cover"
-            loading="eager"
-          />
-          <div className="absolute inset-0 bg-black opacity-70"></div> */}
-        </div>
-      )}
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full"
+        />
+        {!videoLoaded && (
+          <div className="absolute inset-0 bg-black flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black bg-opacity-50" />
+      </div>
 
       {/* Navbar */}
       <nav
@@ -466,7 +525,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           )}
           <select
             onChange={onLanguageChange}
-            defaultValue="es"
+            defaultValue={language}
             className="bg-transparent text-white border border-white rounded px-2 py-1 ml-4 focus:outline-none focus:ring-1 focus:ring-purple-300 cursor-pointer"
             style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
           >

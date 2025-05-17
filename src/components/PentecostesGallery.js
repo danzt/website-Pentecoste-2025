@@ -6,30 +6,27 @@ gsap.registerPlugin(ScrollTrigger);
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const images = [
-  'https://source.unsplash.com/random/800x600?sig=1',
-  'https://source.unsplash.com/random/800x600?sig=2',
-  'https://source.unsplash.com/random/800x600?sig=3',
-  'https://source.unsplash.com/random/800x600?sig=4',
-  'https://source.unsplash.com/random/800x600?sig=5',
-  'https://source.unsplash.com/random/800x600?sig=6',
-  'https://source.unsplash.com/random/800x600?sig=7',
-  'https://source.unsplash.com/random/800x600?sig=8',
-  'https://source.unsplash.com/random/800x600?sig=9',
-  'https://source.unsplash.com/random/800x600?sig=10',
+  '/galery/image-02.jpg',
+  '/galery/image-03.jpg',
+  '/galery/image-04.jpg',
+  '/galery/image-05.jpg',
+  '/galery/image-06.jpg',
+  '/galery/image-07.jpg',
+  '/galery/image-08.jpg'
 ];
 
-  const texts = {
-    es: {
-      title: 'GALERÍA',
-      subtitle: 'Momentos de Pentecostés',
+const texts = {
+  es: {
+    title: 'GALERÍA',
+    subtitle: 'Momentos de Pentecostés',
     up: 'Salir de galería',
-    },
-    en: {
-      title: 'GALLERY',
-      subtitle: 'Pentecost moments',
+  },
+  en: {
+    title: 'GALLERY',
+    subtitle: 'Pentecost moments',
     up: 'Exit gallery',
-    }
-  };
+  }
+};
 
 const PentecostesGallery = ({ language }) => {
   const sectionRef = useRef(null);

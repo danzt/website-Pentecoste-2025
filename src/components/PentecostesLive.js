@@ -6,35 +6,93 @@ gsap.registerPlugin(ScrollTrigger);
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const PentecostesLive = ({ language }) => {
+  // Configuración del evento
+  const EVENT_DATE = new Date('2024-07-26T18:00:00-04:00');
+  const SOON_TIME = new Date('2024-07-26T16:00:00-04:00');
+  const LIVE_TIME = new Date('2024-07-26T17:50:00-04:00');
+  const VIMEO_PROMO_ID = '1084753458';
+  const X_EMBED_URL = 'https://platform.twitter.com/embed/Tweet.html?id=YOUR_TWEET_ID';
+
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [streamStatus, setStreamStatus] = useState('promo');
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const sectionRef = useRef(null);
+  const playerRef = useRef(null);
+  const vimeoPlayerRef = useRef(null);
   
   const texts = {
     es: {
       title: 'TRANSMISIÓN EN VIVO',
       subtitle: 'Sintoniza nuestra señal en directo',
-      placeholder: '¡Mira el video promocional mientras llega el evento!',
-      description: 'El evento Pentecostés será transmitido en vivo el 28 de Julio. Mientras tanto, disfruta este video.',
-      playText: 'VER VIDEO EN GRANDE',
-      liveText: 'EN VIVO AHORA'
+      placeholder: 'Pentecostés - La fiesta del Espíritu',
+      description: 'El evento Pentecostés será transmitido en vivo el 26 de Julio.',
+      playText: 'REPRODUCIR VIDEO',
+      pauseText: 'PAUSAR VIDEO',
+      watchPromo: 'VER VIDEO DEL EVENTO',
+      startingSoon: 'EMPEZARÁ PRONTO',
+      liveNow: 'EN VIVO AHORA'
     },
     en: {
       title: 'LIVE STREAM',
       subtitle: 'Tune in to our live broadcast',
-      placeholder: 'Watch the promo video while the event starts!',
-      description: 'The Pentecost event will be streamed live on July 28th. Meanwhile, enjoy this video.',
-      playText: 'WATCH VIDEO',
-      liveText: 'LIVE NOW'
+      placeholder: 'Pentecost - The feast of the Spirit',
+      description: 'The Pentecost event will be streamed live on July 26th.',
+      playText: 'PLAY VIDEO',
+      pauseText: 'PAUSE VIDEO',
+      watchPromo: 'WATCH EVENT VIDEO',
+      startingSoon: 'STARTING SOON',
+      liveNow: 'LIVE NOW'
     }
   };
 
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+  // Función para determinar el estado inicial
+  const getInitialStreamStatus = () => {
+    const now = new Date();
+    const currentTime = now.getTime();
+    
+    // Si la fecha actual es posterior al evento, mostrar promo
+    if (currentTime > EVENT_DATE.getTime()) {
+      return 'promo';
+    }
+
+    // Durante el evento
+    if (currentTime >= LIVE_TIME.getTime() && currentTime <= EVENT_DATE.getTime()) {
+      return 'live';
+    }
+
+    // Próximo a comenzar
+    if (currentTime >= SOON_TIME.getTime() && currentTime < LIVE_TIME.getTime()) {
+      return 'soon';
+    }
+
+    // Estado por defecto - antes del evento
+    return 'promo';
   };
+
+  // Efecto para manejar el estado de la transmisión
+  useEffect(() => {
+    const checkStreamStatus = () => {
+      const newStatus = getInitialStreamStatus();
+      if (newStatus !== streamStatus) {
+        setStreamStatus(newStatus);
+      }
+    };
+
+    checkStreamStatus();
+
+    // Actualizar cada minuto
+    const timer = setInterval(checkStreamStatus, 60000);
+
+    return () => clearInterval(timer);
+  }, [streamStatus]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
     if (!sectionRef.current) return;
+
     gsap.fromTo(
       sectionRef.current,
       { opacity: 0, y: 80 },
@@ -46,57 +104,279 @@ const PentecostesLive = ({ language }) => {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
+          end: 'bottom 20%',
           toggleActions: 'play none none reverse',
+          onEnter: () => {
+            if (vimeoPlayerRef.current && isPlaying) {
+              vimeoPlayerRef.current.setVolume(1);
+              setIsMuted(false);
+            }
+          },
+          onLeave: () => {
+            if (vimeoPlayerRef.current) {
+              vimeoPlayerRef.current.setVolume(0);
+              setIsMuted(true);
+            }
+          },
+          onEnterBack: () => {
+            if (vimeoPlayerRef.current && isPlaying) {
+              vimeoPlayerRef.current.setVolume(1);
+              setIsMuted(false);
+            }
+          },
+          onLeaveBack: () => {
+            if (vimeoPlayerRef.current) {
+              vimeoPlayerRef.current.setVolume(0);
+              setIsMuted(true);
+            }
+          }
         },
       }
     );
+  }, [isPlaying]);
+
+  // Efecto adicional para manejar la visibilidad usando Intersection Observer
+  useEffect(() => {
+    if (!sectionRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting && vimeoPlayerRef.current) {
+            vimeoPlayerRef.current.setVolume(0);
+            setIsMuted(true);
+          }
+        });
+      },
+      {
+        threshold: 0.3, // El video se silenciará cuando menos del 30% esté visible
+      }
+    );
+
+    observer.observe(sectionRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
+  // Efecto para inicializar el reproductor de Vimeo
+  useEffect(() => {
+    if (streamStatus !== 'promo' || !playerRef.current) return;
+
+    const initVimeoPlayer = async () => {
+      try {
+        if (!window.Vimeo) {
+          const script = document.createElement('script');
+          script.src = 'https://player.vimeo.com/api/player.js';
+          script.async = true;
+          await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+          });
+        }
+
+        if (vimeoPlayerRef.current) {
+          vimeoPlayerRef.current.destroy();
+        }
+
+        vimeoPlayerRef.current = new window.Vimeo.Player(playerRef.current, {
+          id: VIMEO_PROMO_ID,
+          background: false,
+          responsive: true,
+          autoplay: false,
+          controls: false,
+          loop: true,
+          muted: false,
+          playsinline: true,
+          title: false,
+          byline: false,
+          portrait: false,
+          speed: false,
+          transparent: false,
+          autopause: false
+        });
+
+        vimeoPlayerRef.current.on('loaded', async () => {
+          try {
+            setVideoLoaded(true);
+            setPlayerReady(true);
+            await vimeoPlayerRef.current.setVolume(1);
+            await vimeoPlayerRef.current.setMuted(false);
+            console.log('Video cargado y sonido configurado');
+          } catch (error) {
+            console.error('Error al configurar el sonido inicial:', error);
+          }
+        });
+
+        vimeoPlayerRef.current.on('play', () => {
+          setIsPlaying(true);
+        });
+
+        vimeoPlayerRef.current.on('pause', () => {
+          setIsPlaying(false);
+        });
+
+        vimeoPlayerRef.current.on('volumechange', event => {
+          setVolume(event.volume);
+          setIsMuted(event.volume === 0);
+        });
+
+      } catch (error) {
+        console.error('Error al inicializar el reproductor de Vimeo:', error);
+        setVideoLoaded(false);
+      }
+    };
+
+    initVimeoPlayer();
+
+    return () => {
+      if (vimeoPlayerRef.current) {
+        vimeoPlayerRef.current.destroy().catch(console.error);
+      }
+    };
+  }, [streamStatus]);
+
+  const togglePlay = () => {
+    if (!vimeoPlayerRef.current) return;
+    if (isPlaying) {
+      vimeoPlayerRef.current.pause();
+    } else {
+      vimeoPlayerRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const toggleMute = async () => {
+    if (!vimeoPlayerRef.current) return;
+    try {
+      const currentVolume = await vimeoPlayerRef.current.getVolume();
+      if (currentVolume === 0) {
+        await vimeoPlayerRef.current.setVolume(1);
+        setIsMuted(false);
+      } else {
+        await vimeoPlayerRef.current.setVolume(0);
+        setIsMuted(true);
+      }
+    } catch (error) {
+      console.error('Error al cambiar el sonido:', error);
+    }
+  };
+
   return (
-    <section ref={sectionRef} id="live" className="relative min-h-screen flex flex-col justify-center items-center bg-black text-white">
-      <div className="w-full flex flex-col items-center justify-center">
-        <div className="text-center mt-12 mb-8">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-wider">{texts[language].title}</h2>
-          <p className="text-xl text-gray-300">{texts[language].subtitle}</p>
+    <section ref={sectionRef} id="live" className="relative min-h-screen flex flex-col justify-center items-center bg-black text-white py-20">
+      <div className="w-full max-w-7xl mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-5xl md:text-7xl font-bold mb-6 tracking-wider">{texts[language].title}</h2>
+          <p className="text-xl md:text-2xl text-gray-300 mb-4">{texts[language].subtitle}</p>
+          <p className="text-md md:text-lg text-gray-400">{texts[language].description}</p>
         </div>
-        <div className="flex justify-center items-center w-full" style={{flex: 1}}>
-          <div className="relative flex flex-col items-center justify-center w-full" style={{height: '60vh'}}>
-            <div className="flex justify-center items-center w-full h-full">
-              <div className="bg-black rounded-xl overflow-hidden shadow-2xl w-[90vw] max-w-4xl h-full aspect-video flex items-center justify-center">
-                <iframe
-                  className="w-full h-full"
-                  src="https://www.youtube.com/embed/ZIutr-hwwpM?autoplay=0"
-                  title="Promo video"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+
+        <div className="relative aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
+          {streamStatus === 'live' ? (
+            // Embed de X para la transmisión en vivo
+            <div className="w-full h-full">
+              <iframe
+                src={X_EMBED_URL}
+                className="w-full h-full"
+                allowFullScreen
+                allow="autoplay; fullscreen"
+              ></iframe>
+              <div className="absolute top-6 right-6">
+                <span className="flex items-center bg-red-600 px-6 py-3 rounded-full text-sm font-bold">
+                  <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                  {texts[language].liveNow}
+                </span>
               </div>
             </div>
-                <button 
-                  onClick={togglePlay}
-              className="mt-6 bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition flex items-center z-10"
-              style={{ pointerEvents: 'auto' }}
-                >
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                  </svg>
-                  {texts[language].playText}
-                </button>
-            {isPlaying && (
-              <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-                <div className="relative w-full max-w-4xl aspect-w-16 aspect-h-9">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/ZIutr-hwwpM?autoplay=1"
-                    title="Promo video big"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
-                  <button onClick={togglePlay} className="absolute top-2 right-2 bg-white text-black rounded-full px-4 py-2 font-bold">X</button>
+          ) : streamStatus === 'soon' ? (
+            // Pantalla de "Empezará pronto"
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-red-900/20 to-black">
+              <div className="text-center">
+                <div className="animate-pulse mb-4">
+                  <span className="w-3 h-3 bg-red-600 rounded-full inline-block mr-2"></span>
+                  <span className="w-3 h-3 bg-red-600 rounded-full inline-block mr-2 animate-pulse delay-100"></span>
+                  <span className="w-3 h-3 bg-red-600 rounded-full inline-block animate-pulse delay-200"></span>
+                </div>
+                <h3 className="text-3xl md:text-4xl font-bold text-red-600">
+                  {texts[language].startingSoon}
+                </h3>
+              </div>
+            </div>
+          ) : (
+            // Video promocional
+            <>
+              {!videoLoaded && (
+                <div className="absolute inset-0 bg-black flex flex-col items-center justify-center space-y-6">
+                  <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xl text-gray-400">{texts[language].placeholder}</p>
+                </div>
+              )}
+              <div ref={playerRef} className="w-full h-full"></div>
+              <div 
+                className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent transition-opacity duration-500 ${isPlaying ? 'opacity-0 hover:opacity-100' : 'opacity-100'}`}
+              >
+                {/* Indicador de sonido móvil */}
+                <div className="absolute top-4 right-4 sm:hidden">
+                  <div className={`bg-black/50 p-2 rounded-full transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}>
+                    {isMuted ? (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+
+                <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between">
+                  <button 
+                    onClick={togglePlay}
+                    className="flex items-center space-x-2 sm:space-x-3 bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 text-base sm:text-lg font-medium w-full sm:w-auto justify-center"
+                  >
+                    {isPlaying ? (
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-6 sm:w-8 h-6 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="uppercase tracking-wider">{texts[language].pauseText}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-6 sm:w-8 h-6 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="uppercase tracking-wider">{texts[language].watchPromo}</span>
+                      </div>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={toggleMute}
+                    className="hidden sm:flex text-white hover:text-red-500 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      {isMuted ? (
+                        <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </section>

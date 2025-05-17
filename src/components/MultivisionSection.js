@@ -10,40 +10,40 @@ const MultivisionSection = ({ language }) => {
 
   const texts = {
     es: {
-      title: 'MULTIVISIÓN',
-      subtitle: 'Vive Pentecostés en 360°',
+      title: 'Recuerdos de Pentecostés',
+      subtitle: 'Pentecostes, mas que una fecha, es un acontecimiento',
       viewMore: 'VER MÁS VIDEOS'
     },
     en: {
-      title: 'MULTIVISION', 
-      subtitle: 'Experience Pentecost in 360°',
+      title: 'Pentecost memories', 
+      subtitle: 'Pentecost is more than a date, it is an event',
       viewMore: 'VIEW MORE VIDEOS'
     }
   };
 
   const videos = [
     {
-      id: 'x60ZLH-9tbY',
+      id: '1084753419',
       title: 'Adoración'
     },
     {
-      id: 'Jx2sqrw7hB4',
+      id: '1084753341',
       title: 'Biblia'
     },
     {
-      id: '4JX-yNm_z7w',
+      id: '1084753302',
       title: 'Oración'
     },
     {
-      id: '3YtNlPssmgY',
+      id: '1084753260',
       title: 'Iglesia'
     },
     {
-      id: 'Pm3fS4lg0jI',
+      id: '1084753188',
       title: 'Alabanza'
     },
     {
-      id: '7XeX5_Sg3Ag',
+      id: '1084753229',
       title: 'Espíritu Santo'
     }
   ];
@@ -78,28 +78,29 @@ const MultivisionSection = ({ language }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {videos.map((video, index) => (
-            <div key={index} className="relative group">
-              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-900">
+            <div key={index} className="relative group w-full">
+              <div className="relative w-full pt-[56.25%]">
                 <iframe
-                  className="w-full h-full"
-                  src={`https://www.youtube.com/embed/${video.id}?autoplay=1&mute=1&loop=1&controls=0`}
+                  className="absolute top-0 left-0 w-full h-full rounded-lg"
+                  src={`https://player.vimeo.com/video/${video.id}?autoplay=1&loop=1&background=1&muted=1`}
                   title={`Video ${index + 1}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allow="autoplay; fullscreen; picture-in-picture"
                   allowFullScreen
+                  frameBorder="0"
                 ></iframe>
               </div>
-              <div className="mt-2 text-center">
-                <p className="text-white">{video.title}</p>
+              <div className="mt-4 text-center">
+                {/* <p className="text-white text-lg font-medium">{video.title}</p> */}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="text-center mt-12">
+        {/* <div className="text-center mt-12">
           <button className="bg-transparent border-2 border-white text-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition">
             {texts[language].viewMore}
           </button>
-        </div>
+        </div> */}
       </div>
     </section>
   );

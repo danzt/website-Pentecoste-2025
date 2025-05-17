@@ -118,7 +118,7 @@ const PentecostesHero = ({ language }) => {
       <div className="absolute inset-0 bg-black">
         <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-80"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-black to-transparent opacity-60"></div>
-        <div className="w-full h-full bg-[url('https://source.unsplash.com/random/1920x1080/?worship')] bg-cover bg-center filter brightness-75"></div>
+        {/* <div className="w-full h-full bg-[url('https://source.unsplash.com/random/1920x1080/?worship')] bg-cover bg-center filter brightness-75"></div> */}
       </div>
 
       <div 

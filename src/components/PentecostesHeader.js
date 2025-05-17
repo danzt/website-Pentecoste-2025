@@ -175,8 +175,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
 
         // 2. Asegurarse de que el elemento contenedor existe
         if (!videoRef.current) {
-          console.error('El elemento contenedor del video no existe');
-          return;
+          throw new Error('El elemento contenedor del video no existe');
         }
 
         // 3. Cargar el SDK de Vimeo si no está disponible
@@ -191,29 +190,22 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           });
         }
 
-        // 4. Esperar un momento para asegurarse de que el SDK está completamente cargado
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // 5. Crear el iframe manualmente
-        const iframe = document.createElement('iframe');
+        // 4. Crear el iframe y configurar el reproductor inmediatamente
         const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
-        iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0`);
+        
+        // Crear el iframe con todos los parámetros optimizados para carga rápida
+        const iframe = document.createElement('iframe');
+        iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0&quality=auto&dnt=1&muted=1`);
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('allowfullscreen', 'true');
         iframe.setAttribute('allow', 'autoplay; fullscreen');
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '0';
-        iframe.style.left = '0';
+        iframe.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
         
-        // 6. Limpiar el contenedor y agregar el iframe
-        while (videoRef.current.firstChild) {
-          videoRef.current.removeChild(videoRef.current.firstChild);
-        }
+        // Limpiar el contenedor y agregar el iframe
+        videoRef.current.innerHTML = '';
         videoRef.current.appendChild(iframe);
 
-        // 7. Inicializar el reproductor
+        // 5. Inicializar el reproductor con configuración optimizada
         playerRef.current = new window.Vimeo.Player(iframe, {
           id: videoId,
           background: true,
@@ -225,35 +217,47 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           dnt: true,
           playsinline: true,
           autopause: false,
-          transparent: false
+          transparent: false,
+          quality: 'auto',
+          speed: true
         });
 
-        // 8. Esperar a que el reproductor esté listo
-        await playerRef.current.ready();
+        // 6. Configurar eventos con manejo de errores mejorado
+        const initializePlayer = async () => {
+          try {
+            await playerRef.current.ready();
+            await playerRef.current.play();
+            setVideoLoaded(true);
+            setPlayerReady(true);
+          } catch (error) {
+            console.error('Error en la inicialización del reproductor:', error);
+            // Reintentar la inicialización después de un breve delay
+            setTimeout(initializePlayer, 1000);
+          }
+        };
+
+        playerRef.current.on('loaded', initializePlayer);
         
-        // 9. Configurar eventos
-        playerRef.current.on('loaded', () => {
-          setVideoLoaded(true);
-          setPlayerReady(true);
-        });
-
-        playerRef.current.on('play', () => {
-        });
-
-        playerRef.current.on('error', (error) => {
+        playerRef.current.on('error', async (error) => {
           console.error('Error en el reproductor:', error);
+          // Reintentar la reproducción en caso de error
+          try {
+            await playerRef.current.play();
+          } catch (playError) {
+            console.error('Error al reintentar reproducción:', playError);
+            setTimeout(initializePlayer, 1000);
+          }
         });
 
-        // 10. Iniciar reproducción
-        await playerRef.current.play();
+        // 7. Iniciar reproducción inmediatamente
+        initializePlayer();
 
       } catch (error) {
         console.error('Error al inicializar el reproductor de Vimeo:', error);
         setVideoLoaded(false);
         setPlayerReady(false);
-
-        // Reintentar la inicialización después de un delay
-        setTimeout(initVimeoPlayer, 2000);
+        // Reintentar la inicialización después de un delay más corto
+        setTimeout(initVimeoPlayer, 1000);
       }
     };
 
@@ -273,18 +277,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
 
   // 6. EFECTO CINEMATOGRÁFICO PRINCIPAL
   useEffect(() => {
-    if (!playerReady || isMobile || !window.Vimeo || !videoRef.current) {
-      if (masterTimelineRef.current) {
-        masterTimelineRef.current.kill();
-        masterTimelineRef.current = null;
-      }
-      gsap.set([titleRef.current, subtitleRef.current, eventLogoRef.current], { clearProps: "all" });
-      setShowTitle(true);
-      setShowVideo(true);
-      setShowEventLogo(false);
-      setVideoStarted(false);
-      return;
-    }
+    if (!playerReady && !isMobile) return;
 
     if (masterTimelineRef.current) masterTimelineRef.current.kill();
     gsap.killTweensOf([titleRef.current, subtitleRef.current, eventLogoRef.current]);
@@ -292,50 +285,8 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
     const initPlayerAndTimeline = async () => {
       try {
         const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
+        const videoDuration = isMobile ? 8 : await playerRef.current?.getDuration() || 8;
         
-        // Verificar si ya tenemos un reproductor válido
-        if (!playerRef.current || typeof playerRef.current.destroy !== 'function') {
-          // Crear el iframe manualmente si no existe
-          const iframe = document.createElement('iframe');
-          iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0`);
-          iframe.setAttribute('frameborder', '0');
-          iframe.setAttribute('allowfullscreen', 'true');
-          iframe.setAttribute('allow', 'autoplay; fullscreen');
-          iframe.style.width = '100%';
-          iframe.style.height = '100%';
-          iframe.style.position = 'absolute';
-          iframe.style.top = '0';
-          iframe.style.left = '0';
-          
-          // Limpiar el contenedor y agregar el iframe
-          while (videoRef.current.firstChild) {
-            videoRef.current.removeChild(videoRef.current.firstChild);
-          }
-          videoRef.current.appendChild(iframe);
-
-          playerRef.current = new window.Vimeo.Player(iframe, {
-            id: parseInt(videoId),
-            background: true,
-            autoplay: true,
-            loop: true,
-            muted: true,
-            controls: false,
-            responsive: true,
-            dnt: true,
-            playsinline: true,
-            autopause: false,
-            transparent: false
-          });
-        }
-
-        await playerRef.current.ready();
-        const videoDuration = await playerRef.current.getDuration();
-        
-        if (!videoDuration || videoDuration <= 0) {
-          console.error("Cinematic: Could not get valid video duration. Duration:", videoDuration);
-          return;
-        }
-
         setShowTitle(true);
         setShowVideo(true);
         setShowEventLogo(false);
@@ -354,29 +305,40 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           },
         });
 
+        // Animación común para móvil y desktop
         masterTimelineRef.current
           .to(titleRef.current, { opacity: 1, y: "0px", duration: 0.8, ease: "power3.out" }, "textIn")
           .to(subtitleRef.current, { opacity: 1, y: "0px", duration: 0.6, ease: "power3.out" }, "textIn+=0.3")
-          .to([titleRef.current, subtitleRef.current], { opacity: 0, duration: 0.5, ease: "power2.in", onComplete: () => setShowTitle(false) }, "+=2.5")
-          .call(() => {
-            setTimeout(() => {
-              setVideoStarted(true);
-              playerRef.current?.play().catch(e => console.error("Error playing video via API:", e));
-            }, 500);
-          }, null, ">+0.1")
-          .to({}, { duration: videoDuration + 0.5 }, ">")
-          .call(() => {
-            setShowVideo(false);
-            setShowEventLogo(true);
-            setShowTitle(true);
-          })
-          .to(eventLogoRef.current, { opacity: 1, scale: 1.2, y: "0px", duration: 1, ease: "power3.out" }, "logoIn")
-          .to(titleRef.current, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
+          .to([titleRef.current, subtitleRef.current], { 
+            opacity: 0, 
+            duration: 0.5, 
+            ease: "power2.in", 
+            onComplete: () => setShowTitle(false) 
+          }, "+=2.5");
+
+        // Resto de la animación específica para cada plataforma
+        if (!isMobile) {
+          masterTimelineRef.current
+            .call(() => {
+              setTimeout(() => {
+                setVideoStarted(true);
+                playerRef.current?.play().catch(e => console.error("Error playing video via API:", e));
+              }, 500);
+            }, null, ">+0.1")
+            .to({}, { duration: videoDuration }, ">")
+            .call(() => {
+              setShowVideo(false);
+              setShowEventLogo(true);
+              setShowTitle(true);
+            })
+            .to(eventLogoRef.current, { opacity: 1, scale: 1.2, y: "0px", duration: 1, ease: "power3.out" }, "logoIn")
+            .to(titleRef.current, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
+        }
 
         masterTimelineRef.current.play();
 
       } catch (error) {
-        console.error("Error initializing Vimeo player or timeline:", error);
+        console.error("Error initializing timeline:", error);
       }
     };
 
@@ -393,7 +355,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
 
   // 7. SCROLLTRIGGER PARA REINICIAR ANIMACIÓN DEL HEADER
   useEffect(() => {
-    if (!headerRef.current || isMobile || !playerReady) return;
+    if (!headerRef.current) return;
 
     const st = ScrollTrigger.create({
       trigger: headerRef.current,
@@ -588,15 +550,20 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           <>
             <h1
               ref={titleRef}
-              className="text-white text-4xl md:text-6xl font-extrabold mb-4 opacity-0"
-              style={{ textShadow: '0 2px 10px rgba(0,0,0,0.8)', filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.9))' }}
+              className="text-white text-4xl md:text-6xl font-extrabold mb-4"
+              style={{ 
+                textShadow: '0 2px 10px rgba(0,0,0,0.8)', 
+                filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.9))'
+              }}
             >
               Pentecostés
             </h1>
             <p
               ref={subtitleRef}
-              className="text-white text-lg md:text-2xl font-medium opacity-0"
-              style={{ textShadow: '0 1px 5px rgba(0,0,0,0.8)' }}
+              className="text-white text-lg md:text-2xl font-medium"
+              style={{ 
+                textShadow: '0 1px 5px rgba(0,0,0,0.8)'
+              }}
             >
               La Fiesta del Espíritu
             </p>

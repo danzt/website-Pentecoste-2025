@@ -29,22 +29,28 @@ const PentecostesLive = ({ language }) => {
       subtitle: 'Sintoniza nuestra señal en directo',
       placeholder: 'Pentecostés - La fiesta del Espíritu',
       description: 'El evento Pentecostés será transmitido en vivo el 26 de Julio.',
-      playText: 'REPRODUCIR VIDEO',
-      pauseText: 'PAUSAR VIDEO',
-      watchPromo: 'VER VIDEO DEL EVENTO',
+      playText: 'REPRODUCIR',
+      pauseText: 'PAUSAR',
+      watchPromo: 'VER VIDEO',
       startingSoon: 'EMPEZARÁ PRONTO',
-      liveNow: 'EN VIVO AHORA'
+      liveNow: 'EN VIVO AHORA',
+      muteText: 'SILENCIAR',
+      unmuteText: 'ACTIVAR SONIDO',
+      volumeText: 'Volumen'
     },
     en: {
       title: 'LIVE STREAM',
       subtitle: 'Tune in to our live broadcast',
       placeholder: 'Pentecost - The feast of the Spirit',
       description: 'The Pentecost event will be streamed live on July 26th.',
-      playText: 'PLAY VIDEO',
-      pauseText: 'PAUSE VIDEO',
-      watchPromo: 'WATCH EVENT VIDEO',
+      playText: 'PLAY',
+      pauseText: 'PAUSE',
+      watchPromo: 'WATCH VIDEO',
       startingSoon: 'STARTING SOON',
-      liveNow: 'LIVE NOW'
+      liveNow: 'LIVE NOW',
+      muteText: 'MUTE',
+      unmuteText: 'UNMUTE',
+      volumeText: 'Volume'
     }
   };
 
@@ -181,51 +187,87 @@ const PentecostesLive = ({ language }) => {
           vimeoPlayerRef.current.destroy();
         }
 
+        // Configuración optimizada del reproductor
         vimeoPlayerRef.current = new window.Vimeo.Player(playerRef.current, {
           id: VIMEO_PROMO_ID,
           background: false,
           responsive: true,
           autoplay: false,
           controls: false,
-          loop: true,
-          muted: false,
+          loop: false,
+          muted: true, // Iniciar muteado para permitir autoplay
           playsinline: true,
           title: false,
           byline: false,
           portrait: false,
           speed: false,
           transparent: false,
-          autopause: false
+          autopause: false,
+          quality: 'auto',
+          dnt: true
         });
 
-        vimeoPlayerRef.current.on('loaded', async () => {
+        // Función de inicialización con reintentos
+        const initializePlayer = async (retryCount = 0) => {
           try {
+            await vimeoPlayerRef.current.ready();
+            await vimeoPlayerRef.current.play();
             setVideoLoaded(true);
             setPlayerReady(true);
-            await vimeoPlayerRef.current.setVolume(1);
-            await vimeoPlayerRef.current.setMuted(false);
-            console.log('Video cargado y sonido configurado');
+            setIsPlaying(true);
+            console.log('Video cargado y reproducción iniciada');
           } catch (error) {
-            console.error('Error al configurar el sonido inicial:', error);
+            console.error('Error en la inicialización:', error);
+            if (retryCount < 3) {
+              setTimeout(() => initializePlayer(retryCount + 1), 1000);
+            }
           }
-        });
+        };
+
+        // Configuración de eventos mejorada
+        vimeoPlayerRef.current.on('loaded', () => initializePlayer());
 
         vimeoPlayerRef.current.on('play', () => {
           setIsPlaying(true);
+          console.log('Video reproduciendo');
         });
 
         vimeoPlayerRef.current.on('pause', () => {
           setIsPlaying(false);
+          console.log('Video pausado');
         });
 
-        vimeoPlayerRef.current.on('volumechange', event => {
-          setVolume(event.volume);
-          setIsMuted(event.volume === 0);
+        vimeoPlayerRef.current.on('ended', async () => {
+          try {
+            console.log('Video terminado, reiniciando...');
+            await vimeoPlayerRef.current.setCurrentTime(0);
+            await vimeoPlayerRef.current.play();
+            setIsPlaying(true);
+          } catch (error) {
+            console.error('Error al reiniciar el video:', error);
+            initializePlayer();
+          }
         });
+
+        vimeoPlayerRef.current.on('error', async (error) => {
+          console.error('Error en el reproductor:', error);
+          try {
+            await vimeoPlayerRef.current.play();
+          } catch (playError) {
+            console.error('Error al reintentar reproducción:', playError);
+            initializePlayer();
+          }
+        });
+
+        // Iniciar reproducción inmediatamente
+        initializePlayer();
 
       } catch (error) {
         console.error('Error al inicializar el reproductor de Vimeo:', error);
         setVideoLoaded(false);
+        setPlayerReady(false);
+        // Reintentar la inicialización
+        setTimeout(initVimeoPlayer, 1000);
       }
     };
 
@@ -233,8 +275,36 @@ const PentecostesLive = ({ language }) => {
 
     return () => {
       if (vimeoPlayerRef.current) {
-        vimeoPlayerRef.current.destroy().catch(console.error);
+        try {
+          vimeoPlayerRef.current.destroy();
+        } catch (error) {
+          console.warn('Error al destruir el reproductor:', error);
+        }
       }
+    };
+  }, [streamStatus]);
+
+  // Efecto para manejar la visibilidad de la página
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!vimeoPlayerRef.current) return;
+
+      if (document.hidden) {
+        await vimeoPlayerRef.current.pause();
+      } else if (streamStatus === 'promo') {
+        try {
+          await vimeoPlayerRef.current.play();
+          setIsPlaying(true);
+        } catch (error) {
+          console.error('Error al reanudar la reproducción:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [streamStatus]);
 
@@ -336,38 +406,34 @@ const PentecostesLive = ({ language }) => {
                 <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between">
                   <button 
                     onClick={togglePlay}
-                    className="flex items-center space-x-2 sm:space-x-3 bg-red-600 hover:bg-red-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full transition-all duration-300 transform hover:scale-105 text-base sm:text-lg font-medium w-full sm:w-auto justify-center"
+                    className="flex items-center justify-center w-12 h-12 bg-red-600/90 hover:bg-red-700 backdrop-blur-sm text-white rounded-full transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
                   >
-                    {isPlaying ? (
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-6 sm:w-8 h-6 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div className="flex items-center justify-center">
+                      {isPlaying ? (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="uppercase tracking-wider">{texts[language].pauseText}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-6 sm:w-8 h-6 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      ) : (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="uppercase tracking-wider">{texts[language].watchPromo}</span>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </button>
 
                   <button
                     onClick={toggleMute}
-                    className="hidden sm:flex text-white hover:text-red-500 transition-colors"
+                    className="hidden sm:flex items-center justify-center w-12 h-12 bg-black/30 hover:bg-black/40 backdrop-blur-sm text-white rounded-full transition-all duration-300 hover:scale-105"
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       {isMuted ? (
-                        <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                         </svg>
                       ) : (
-                        <svg className="w-5 sm:w-6 h-5 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                         </svg>
                       )}

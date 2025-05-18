@@ -27,6 +27,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
   const lenisRef = useRef(null);
   const animationFrameIdRef = useRef(null);
   const showEventLogoStateRef = useRef(false);
+  const preloadTimeoutRef = useRef(null);
 
   // --- Estados ---
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,6 +39,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
   const [showVideo, setShowVideo] = useState(true);
   const [videoStarted, setVideoStarted] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(true);
 
   // Sincronizar estado con ref
   useEffect(() => {
@@ -114,10 +116,58 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       }
     };
     
+    // Detectar la calidad de conexión
+    const checkConnectionSpeed = () => {
+      if ('connection' in navigator) {
+        const connection = navigator.connection;
+        if (connection.effectiveType === '4g') {
+          return 'auto';
+        } else if (connection.effectiveType === '3g') {
+          return '540p';
+        } else {
+          return '360p';
+        }
+      }
+      return isMobile ? '540p' : 'auto';
+    };
+
+    // Actualizar calidad cuando cambia la conexión
+    const handleConnectionChange = () => {
+      if (playerRef.current) {
+        const quality = checkConnectionSpeed();
+        playerRef.current.setQuality(quality).catch(console.warn);
+      }
+    };
+
+    if ('connection' in navigator) {
+      navigator.connection.addEventListener('change', handleConnectionChange);
+    }
+    
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      if ('connection' in navigator) {
+        navigator.connection.removeEventListener('change', handleConnectionChange);
+      }
+    };
   }, []);
+
+  // Función auxiliar para determinar la calidad inicial del video
+  const getInitialVideoQuality = () => {
+    if ('connection' in navigator) {
+      const connection = navigator.connection;
+      if (connection.effectiveType === '4g') {
+        return isMobile ? '720p' : 'auto';
+      } else if (connection.effectiveType === '3g') {
+        return '540p';
+      } else {
+        return '360p';
+      }
+    }
+    return isMobile ? '540p' : 'auto';
+  };
 
   // 3. EFECTO DE SCROLL PARA NAVBAR
   useEffect(() => {
@@ -159,6 +209,53 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
     return () => clearInterval(timer);
   }, [EVENT_DATE]);
 
+  // Efecto para precargar el SDK de Vimeo
+  useEffect(() => {
+    const preloadVimeoSDK = async () => {
+      try {
+        if (!window.Vimeo) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://player.vimeo.com/api/player.js';
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+      } catch (error) {
+        console.warn('Error precargando SDK de Vimeo:', error);
+      }
+    };
+
+    preloadVimeoSDK();
+  }, []);
+
+  // Efecto para precargar el video
+  useEffect(() => {
+    const preloadVideo = () => {
+      const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
+      const preloadLink = document.createElement('link');
+      preloadLink.rel = 'preload';
+      preloadLink.as = 'video';
+      preloadLink.href = `https://player.vimeo.com/video/${videoId}/config`;
+      document.head.appendChild(preloadLink);
+
+      // Iniciar precarga después de un breve delay
+      preloadTimeoutRef.current = setTimeout(() => {
+        setIsPreloading(false);
+      }, 1000);
+    };
+
+    preloadVideo();
+
+    return () => {
+      if (preloadTimeoutRef.current) {
+        clearTimeout(preloadTimeoutRef.current);
+      }
+    };
+  }, [isMobile]);
+
   // 5. INICIALIZAR REPRODUCTOR DE VIMEO
   useEffect(() => {
     const initVimeoPlayer = async () => {
@@ -179,26 +276,18 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
         }
 
         // 3. Cargar el SDK de Vimeo si no está disponible
-        if (!window.Vimeo) {
-          await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://player.vimeo.com/api/player.js';
-            script.async = true;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.body.appendChild(script);
-          });
-        }
+        if (isPreloading) return; // No inicializar hasta que la precarga esté lista
 
         // 4. Crear el iframe y configurar el reproductor inmediatamente
         const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
         
         // Crear el iframe con todos los parámetros optimizados para carga rápida
         const iframe = document.createElement('iframe');
-        iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0&quality=auto&dnt=1&muted=1`);
+        iframe.setAttribute('src', `https://player.vimeo.com/video/${videoId}?background=1&autoplay=1&loop=1&byline=0&title=0&quality=auto&dnt=1&muted=1&preload=metadata&loading=eager&playsinline=1`);
         iframe.setAttribute('frameborder', '0');
         iframe.setAttribute('allowfullscreen', 'true');
         iframe.setAttribute('allow', 'autoplay; fullscreen');
+        iframe.setAttribute('loading', 'eager');
         iframe.style.cssText = 'width:100%;height:100%;position:absolute;top:0;left:0;';
         
         // Limpiar el contenedor y agregar el iframe
@@ -218,8 +307,13 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           playsinline: true,
           autopause: false,
           transparent: false,
-          quality: 'auto',
-          speed: true
+          quality: getInitialVideoQuality(),
+          speed: true,
+          preload: 'metadata',
+          pip: false,
+          portrait: false,
+          title: false,
+          byline: false
         });
 
         // 6. Configurar eventos con manejo de errores mejorado
@@ -273,7 +367,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
         }
       }
     };
-  }, [isMobile]);
+  }, [isMobile, isPreloading]);
 
   // 6. EFECTO CINEMATOGRÁFICO PRINCIPAL
   useEffect(() => {
@@ -311,9 +405,13 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           .to(subtitleRef.current, { opacity: 1, y: "0px", duration: 0.6, ease: "power3.out" }, "textIn+=0.3")
           .to([titleRef.current, subtitleRef.current], { 
             opacity: 0, 
+            y: "-20px",
             duration: 0.5, 
-            ease: "power2.in", 
-            onComplete: () => setShowTitle(false) 
+            ease: "power2.in",
+            onComplete: () => {
+              setShowTitle(false);
+              gsap.set([titleRef.current, subtitleRef.current], { display: "none" });
+            }
           }, "+=2.5");
 
         // Resto de la animación específica para cada plataforma
@@ -330,6 +428,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
               setShowVideo(false);
               setShowEventLogo(true);
               setShowTitle(true);
+              gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
             })
             .to(eventLogoRef.current, { opacity: 1, scale: 1.2, y: "0px", duration: 1, ease: "power3.out" }, "logoIn")
             .to(titleRef.current, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
@@ -363,6 +462,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       end: "bottom top",
       onEnter: () => {
         if (masterTimelineRef.current) {
+          gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
           masterTimelineRef.current.restart(true);
           masterTimelineRef.current.play();
         }
@@ -373,6 +473,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       },
       onEnterBack: () => {
         if (masterTimelineRef.current) {
+          gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
           masterTimelineRef.current.restart(true);
           masterTimelineRef.current.play();
         }
@@ -384,6 +485,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       onLeave: () => {
         if (masterTimelineRef.current) {
           masterTimelineRef.current.pause();
+          gsap.set([titleRef.current, subtitleRef.current], { display: "none" });
         }
         setShowTitle(false);
         setShowVideo(false);
@@ -393,6 +495,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       onLeaveBack: () => {
         if (masterTimelineRef.current) {
           masterTimelineRef.current.pause();
+          gsap.set([titleRef.current, subtitleRef.current], { display: "none" });
         }
         setShowTitle(false);
         setShowVideo(false);

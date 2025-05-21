@@ -461,7 +461,11 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       start: "top top",
       end: "bottom top",
       onEnter: () => {
-        if (masterTimelineRef.current) {
+        if (
+          masterTimelineRef.current &&
+          titleRef.current &&
+          subtitleRef.current
+        ) {
           gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
           masterTimelineRef.current.restart(true);
           masterTimelineRef.current.play();
@@ -472,7 +476,11 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
         setVideoStarted(false);
       },
       onEnterBack: () => {
-        if (masterTimelineRef.current) {
+        if (
+          masterTimelineRef.current &&
+          titleRef.current &&
+          subtitleRef.current
+        ) {
           gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
           masterTimelineRef.current.restart(true);
           masterTimelineRef.current.play();
@@ -483,7 +491,11 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
         setVideoStarted(false);
       },
       onLeave: () => {
-        if (masterTimelineRef.current) {
+        if (
+          masterTimelineRef.current &&
+          titleRef.current &&
+          subtitleRef.current
+        ) {
           masterTimelineRef.current.pause();
           gsap.set([titleRef.current, subtitleRef.current], { display: "none" });
         }
@@ -493,7 +505,11 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
         setVideoStarted(false);
       },
       onLeaveBack: () => {
-        if (masterTimelineRef.current) {
+        if (
+          masterTimelineRef.current &&
+          titleRef.current &&
+          subtitleRef.current
+        ) {
           masterTimelineRef.current.pause();
           gsap.set([titleRef.current, subtitleRef.current], { display: "none" });
         }

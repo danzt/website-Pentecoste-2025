@@ -112,30 +112,6 @@ const PentecostesLive = ({ language }) => {
           start: 'top 80%',
           end: 'bottom 20%',
           toggleActions: 'play none none reverse',
-          onEnter: () => {
-            if (vimeoPlayerRef.current && isPlaying) {
-              vimeoPlayerRef.current.setVolume(1);
-              setIsMuted(false);
-            }
-          },
-          onLeave: () => {
-            if (vimeoPlayerRef.current) {
-              vimeoPlayerRef.current.setVolume(0);
-              setIsMuted(true);
-            }
-          },
-          onEnterBack: () => {
-            if (vimeoPlayerRef.current && isPlaying) {
-              vimeoPlayerRef.current.setVolume(1);
-              setIsMuted(false);
-            }
-          },
-          onLeaveBack: () => {
-            if (vimeoPlayerRef.current) {
-              vimeoPlayerRef.current.setVolume(0);
-              setIsMuted(true);
-            }
-          }
         },
       }
     );
@@ -147,12 +123,7 @@ const PentecostesLive = ({ language }) => {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting && vimeoPlayerRef.current) {
-            vimeoPlayerRef.current.setVolume(0);
-            setIsMuted(true);
-          }
-        });
+        // Eliminar lógica de mute/unmute automático por visibilidad
       },
       {
         threshold: 0.3, // El video se silenciará cuando menos del 30% esté visible
@@ -211,10 +182,12 @@ const PentecostesLive = ({ language }) => {
         const initializePlayer = async (retryCount = 0) => {
           try {
             await vimeoPlayerRef.current.ready();
+            await vimeoPlayerRef.current.setVolume(0); // Siempre muteado al iniciar
             await vimeoPlayerRef.current.play();
             setVideoLoaded(true);
             setPlayerReady(true);
             setIsPlaying(true);
+            setIsMuted(true); // Estado de mute siempre true al iniciar
             console.log('Video cargado y reproducción iniciada');
           } catch (error) {
             console.error('Error en la inicialización:', error);
@@ -295,6 +268,7 @@ const PentecostesLive = ({ language }) => {
         try {
           await vimeoPlayerRef.current.play();
           setIsPlaying(true);
+          // No desmutear automáticamente
         } catch (error) {
           console.error('Error al reanudar la reproducción:', error);
         }

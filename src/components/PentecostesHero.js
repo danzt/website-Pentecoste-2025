@@ -21,7 +21,7 @@ const PentecostesHero = ({ language }) => {
     es: {
       title: 'PENTECOSTÉS',
       subtitle: 'La fiesta del Espíritu',
-      date: 'SÁBADO 26 DE JULIO',
+      date: 'DOMINGO 10 DE AGOSTO',
       time: '6:00 PM / ENTRADA GRATIS',
       location: 'ESTADIO JOSÉ DAVID UGARTE',
       cta: 'RESERVAR ENTRADA'
@@ -29,7 +29,7 @@ const PentecostesHero = ({ language }) => {
     en: {
       title: 'PENTECOST',
       subtitle: 'The feast of the Spirit',
-      date: 'SATURDAY JULY 26TH',
+      date: 'SUNDAY AUGUST 10TH',
       time: '6:00 PM / FREE ENTRANCE',
       location: 'JOSÉ DAVID UGARTE STADIUM',
       cta: 'RESERVE TICKET'

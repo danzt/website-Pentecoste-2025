@@ -6,7 +6,7 @@ import Lenis from "@studio-freight/lenis";
 // Registrar el plugin ScrollTrigger
 gsap.registerPlugin(ScrollTrigger);
 
-const PentecostesHeader = ({ onLanguageChange, language }) => {
+const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
   // --- Configuración ---
   const VIMEO_VIDEO_ID = "1101559705";
   const MOBILE_VIMEO_VIDEO_ID = "1101559705";
@@ -551,27 +551,34 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
   return (
     <header
       ref={headerRef}
-      className="relative w-full h-screen overflow-hidden z-30"
+      className={`relative w-full ${compact ? 'h-32' : 'h-screen'} overflow-hidden z-30`}
     >
-      {/* Video de fondo */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none">
-        <div
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full"
-        />
-        {!videoLoaded && (
-          <div className="absolute inset-0 bg-black flex items-center justify-center">
-            <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black bg-opacity-50" />
-      </div>
+      {/* Video de fondo - solo si no es compacto */}
+      {!compact && (
+        <div className="absolute inset-0 w-full h-full pointer-events-none">
+          <div
+            ref={videoRef}
+            className="absolute inset-0 w-full h-full"
+          />
+          {!videoLoaded && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black bg-opacity-50" />
+        </div>
+      )}
+
+      {/* Fondo sólido para modo compacto */}
+      {compact && (
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-900 to-blue-900" />
+      )}
 
       {/* Navbar */}
       <nav
         ref={navRef}
-        className={`fixed top-0 left-0 w-full px-6 py-1 flex justify-between items-center z-50`}
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0)', backdropFilter: 'none' }}
+        className={`${compact ? 'relative' : 'fixed'} top-0 left-0 w-full px-6 py-1 flex justify-between items-center z-50`}
+        style={{ backgroundColor: compact ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0)', backdropFilter: compact ? 'blur(10px)' : 'none' }}
       >
         <div className="flex items-center">
           <img
@@ -598,7 +605,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           {isLive && (
             <button
               onClick={handleLiveClick}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-bold transition"
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-bold transition animate-pulse"
               style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
             >
               EN VIVO
@@ -647,7 +654,7 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
           {isLive && (
             <button
               onClick={(e) => { handleLiveClick(e); setMenuOpen(false); }}
-              className="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full font-bold mt-2 text-lg"
+              className="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full font-bold mt-2 text-lg animate-pulse"
             >
               EN VIVO
             </button>
@@ -664,31 +671,42 @@ const PentecostesHeader = ({ onLanguageChange, language }) => {
       )}
 
       {/* Contenido principal del Header */}
-      <div className="header-content relative z-20 h-full flex flex-col justify-center items-center text-center px-6 pointer-events-none">
-        {showTitle && (
-          <>
-            <h1
-              ref={titleRef}
-              className="text-white text-4xl md:text-6xl font-extrabold mb-4"
-              style={{ 
-                textShadow: '0 2px 10px rgba(0,0,0,0.8)', 
-                filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.9))'
-              }}
-            >
-              Pentecostés
-            </h1>
-            <p
-              ref={subtitleRef}
-              className="text-white text-lg md:text-2xl font-medium"
-              style={{ 
-                textShadow: '0 1px 5px rgba(0,0,0,0.8)'
-              }}
-            >
-              La Fiesta del Espíritu
-            </p>
-          </>
-        )}
-      </div>
+      {/* Solo mostrar el contenido principal si no es compacto */}
+      {!compact && showTitle && (
+        <div className="header-content relative z-20 h-full flex flex-col justify-center items-center text-center px-6 pointer-events-none">
+          <h1
+            ref={titleRef}
+            className="text-white text-4xl md:text-6xl font-extrabold mb-4"
+            style={{ 
+              textShadow: '0 2px 10px rgba(0,0,0,0.8)', 
+              filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.9))'
+            }}
+          >
+            Pentecostés
+          </h1>
+          <p
+            ref={subtitleRef}
+            className="text-white text-lg md:text-2xl font-medium"
+            style={{ 
+              textShadow: '0 1px 5px rgba(0,0,0,0.8)'
+            }}
+          >
+            La Fiesta del Espíritu
+          </p>
+        </div>
+      )}
+
+      {/* Contenido compacto para el día del evento */}
+      {compact && (
+        <div className="header-content relative z-20 h-full flex flex-col justify-center items-center text-center px-6">
+          <h1 className="text-white text-2xl md:text-3xl font-bold">
+            Pentecostés 2025
+          </h1>
+          <p className="text-white text-sm md:text-base opacity-80">
+            La Fiesta del Espíritu
+          </p>
+        </div>
+      )}
     </header>
   );
 };

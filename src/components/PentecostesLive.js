@@ -7,11 +7,13 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 
 const PentecostesLive = ({ language }) => {
   // Configuración del evento
-  const EVENT_DATE = new Date('2024-07-26T18:00:00-04:00');
-  const SOON_TIME = new Date('2024-07-26T16:00:00-04:00');
-  const LIVE_TIME = new Date('2024-07-26T17:50:00-04:00');
-  const VIMEO_PROMO_ID = '1084753458';
-  const X_EMBED_URL = 'https://platform.twitter.com/embed/Tweet.html?id=YOUR_TWEET_ID';
+  const EVENT_DATE = new Date('2025-08-10T18:00:00-04:00');
+  const SOON_TIME = new Date('2025-08-10T16:00:00-04:00');
+  const LIVE_TIME = new Date('2025-08-10T17:50:00-04:00');
+  const VIMEO_PROMO_ID = '1101559705';
+  // Cambiar de X/Twitter a YouTube Live
+  const YOUTUBE_LIVE_ID = 'TU_STREAM_ID_AQUI'; // Reemplaza con tu Stream ID de YouTube
+  const YOUTUBE_LIVE_URL = `https://www.youtube.com/embed/${YOUTUBE_LIVE_ID}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1`;
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -319,14 +321,16 @@ const PentecostesLive = ({ language }) => {
 
         <div className="relative aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
           {streamStatus === 'live' ? (
-            // Embed de X para la transmisión en vivo
+            // YouTube Live Stream
             <div className="w-full h-full">
               <iframe
-                src={X_EMBED_URL}
+                src={YOUTUBE_LIVE_URL}
                 className="w-full h-full"
                 allowFullScreen
-                allow="autoplay; fullscreen"
-              ></iframe>
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Pentecostés 2025 - Transmisión en Vivo"
+              />
               <div className="absolute top-6 right-6">
                 <span className="flex items-center bg-red-600 px-6 py-3 rounded-full text-sm font-bold">
                   <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>

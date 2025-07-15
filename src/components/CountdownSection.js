@@ -30,7 +30,7 @@ const CountdownSection = ({ language }) => {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();
-      const eventDate = new Date('June 4, 2023 00:00:00'); // Fecha de Pentecostés 2023
+      const eventDate = new Date('August 10, 2025 18:00:00'); // Fecha de Pentecostés 2025
       const difference = eventDate - now;
 
       if (difference > 0) {

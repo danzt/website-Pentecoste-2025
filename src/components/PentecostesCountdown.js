@@ -38,7 +38,7 @@ const PentecostesCountdown = ({ language }) => {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const now = new Date();
-      const eventDate = new Date('July 26, 2025 00:00:00');
+      const eventDate = new Date('August 10, 2025 18:00:00');
       const difference = eventDate - now;
 
       if (difference > 0) {

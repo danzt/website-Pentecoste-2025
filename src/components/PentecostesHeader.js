@@ -8,8 +8,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 const PentecostesHeader = ({ onLanguageChange, language }) => {
   // --- Configuración ---
-  const VIMEO_VIDEO_ID = "1084753458";
-  const MOBILE_VIMEO_VIDEO_ID = "1085025631";
+  const VIMEO_VIDEO_ID = "1101559705";
+  const MOBILE_VIMEO_VIDEO_ID = "1101559705";
   const BACKGROUND_IMAGE = "/static/logo-pentecostes.png";
   const LOGO_URL = "/static/logo-pentecostes.png";
   const EVENT_LOGO = "/static/pentecostes.2025.png";

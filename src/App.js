@@ -113,7 +113,7 @@ const App = () => {
   const renderLayout = () => {
     switch (eventStatus) {
       case 'LIVE':
-        // Durante el live: Countdown urgente → Live prominente → Header compacto
+        // Durante el live: Countdown urgente → Live prominente
         return (
           <>
             <div id="countdown" className="order-1">
@@ -122,23 +122,20 @@ const App = () => {
             <div id="live" className="order-2">
               <PentecostesLive language={language} priority="high" autoFocus={true} />
             </div>
-            <div id="home" className="order-3">
-              <PentecostesHeader onLanguageChange={handleLanguageChange} language={language} compact={true} />
-            </div>
-            <div id="hero" className="order-4">
+            <div id="hero" className="order-3">
               <PentecostesHero language={language} />
             </div>
-            <div id="multivision" className="order-5">
+            <div id="multivision" className="order-4">
               <MultivisionSection language={language} />
             </div>
-            <div id="gallery" className="order-6">
+            <div id="gallery" className="order-5">
               <PentecostesGallery language={language} />
             </div>
           </>
         );
 
       case 'EVENT_DAY':
-        // Día del evento: Countdown → Live → Header compacto
+        // Día del evento: Countdown → Live
         return (
           <>
             <div id="countdown" className="order-1">
@@ -147,16 +144,13 @@ const App = () => {
             <div id="live" className="order-2">
               <PentecostesLive language={language} priority="high" />
             </div>
-            <div id="home" className="order-3">
-              <PentecostesHeader onLanguageChange={handleLanguageChange} language={language} compact={true} />
-            </div>
-            <div id="hero" className="order-4">
+            <div id="hero" className="order-3">
               <PentecostesHero language={language} />
             </div>
-            <div id="multivision" className="order-5">
+            <div id="multivision" className="order-4">
               <MultivisionSection language={language} />
             </div>
-            <div id="gallery" className="order-6">
+            <div id="gallery" className="order-5">
               <PentecostesGallery language={language} />
             </div>
           </>
@@ -166,22 +160,19 @@ const App = () => {
         // Estado normal: Orden original
         return (
           <>
-            <div id="home" className="order-1">
-              <PentecostesHeader onLanguageChange={handleLanguageChange} language={language} />
-            </div>
-            <div id="hero" className="order-2">
+            <div id="hero" className="order-1">
               <PentecostesHero language={language} />
             </div>
-            <div id="live" className="order-3">
+            <div id="live" className="order-2">
               <PentecostesLive language={language} />
             </div>
-            <div id="multivision" className="order-4">
+            <div id="multivision" className="order-3">
               <MultivisionSection language={language} />
             </div>
-            <div id="countdown" className="order-5">
+            <div id="countdown" className="order-4">
               <PentecostesCountdown language={language} />
             </div>
-            <div id="gallery" className="order-6">
+            <div id="gallery" className="order-5">
               <PentecostesGallery language={language} />
             </div>
           </>
@@ -191,9 +182,16 @@ const App = () => {
 
   return (
     <div className="font-sans bg-black text-white">
+      {/* NAVBAR SIEMPRE ARRIBA */}
+      <PentecostesHeader 
+        onLanguageChange={handleLanguageChange} 
+        language={language} 
+        compact={eventStatus === 'LIVE' || eventStatus === 'EVENT_DAY'} 
+      />
+
       {/* Banner de solicitud de notificaciones */}
       {showNotificationBanner && (
-        <div className="fixed top-4 left-4 right-4 z-[70]">
+        <div className="fixed top-20 left-4 right-4 z-[70]">
           <div className="bg-gradient-to-r from-blue-600/95 to-purple-700/95 backdrop-blur-lg border border-blue-500/30 rounded-xl px-4 py-3 shadow-2xl max-w-md mx-auto">
             <div className="flex items-center space-x-3">
               <div className="text-2xl">🔔</div>
@@ -226,7 +224,7 @@ const App = () => {
 
       {/* Banner informativo para usuarios - solo cuando es relevante */}
       {eventStatus !== 'NORMAL' && (
-        <div className="fixed top-4 right-4 z-[60]">
+        <div className="fixed top-20 right-4 z-[60]">
           <div className="bg-gradient-to-r from-red-600/90 to-purple-800/90 backdrop-blur-lg border border-red-500/30 rounded-xl px-4 py-3 shadow-2xl max-w-sm">
             <div className="flex items-center space-x-3">
               {/* Ícono pulsante */}
@@ -286,7 +284,6 @@ const App = () => {
       <div className="flex flex-col">
         {renderLayout()}
       </div>
-      
       <PentecostesFooter language={language} />
     </div>
   );

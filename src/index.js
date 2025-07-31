@@ -4,7 +4,7 @@ import App from './App';
 import './styles.css';
 
 // Lenis scroll smooth integration
-import Lenis from 'lenis';
+import Lenis from '@studio-freight/lenis';
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
 

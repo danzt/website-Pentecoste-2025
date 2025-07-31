@@ -602,15 +602,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
               {item}
             </a>
           ))}
-          {isLive && (
-            <button
-              onClick={handleLiveClick}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full font-bold transition animate-pulse"
-              style={{ boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
-            >
-              EN VIVO
-            </button>
-          )}
+
           <select
             onChange={onLanguageChange}
             defaultValue={language}
@@ -651,14 +643,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
                {item}
              </a>
           ))}
-          {isLive && (
-            <button
-              onClick={(e) => { handleLiveClick(e); setMenuOpen(false); }}
-              className="block w-full text-left bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-full font-bold mt-2 text-lg animate-pulse"
-            >
-              EN VIVO
-            </button>
-          )}
+
           <select
             onChange={(e) => { onLanguageChange(e); setMenuOpen(false); }}
             defaultValue="es"

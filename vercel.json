@@ -1,8 +1,5 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "build",
-  "framework": "create-react-app",
-  "analytics": {
-    "enabled": true
-  }
+  "framework": "create-react-app"
 } 

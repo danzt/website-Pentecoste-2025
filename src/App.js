@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import PentecostesHeader from './components/PentecostesHeader';
 import PentecostesHero from './components/PentecostesHero';
 import PentecostesLive from './components/PentecostesLive';
@@ -285,6 +286,7 @@ const App = () => {
         {renderLayout()}
       </div>
       <PentecostesFooter language={language} />
+      <Analytics />
     </div>
   );
 };

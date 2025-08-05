@@ -21,10 +21,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "build/index.html": {
-      "maxDuration": 10
-    }
-  }
+  ]
 } 

@@ -33,6 +33,11 @@ self.addEventListener('activate', (event) => {
 
 // Interceptar peticiones de red
 self.addEventListener('fetch', (event) => {
+  // Ignorar peticiones que no sean http/https (e.g., data:, chrome-extension:)
+  if (!event.request || !event.request.url || !event.request.url.startsWith('http')) {
+    return; // No interceptar
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -40,8 +45,8 @@ self.addEventListener('fetch', (event) => {
           return response;
         }
         return fetch(event.request);
-      }
-    )
+      })
+      .catch(() => fetch(event.request))
   );
 });
 

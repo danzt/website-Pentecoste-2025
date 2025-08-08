@@ -14,6 +14,11 @@ const App = () => {
   const [eventStatus, setEventStatus] = useState('NORMAL');
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
   const prevEventStatusRef = useRef('NORMAL');
+  // Live control via keyboard shortcut
+  const [isLiveIdModalOpen, setIsLiveIdModalOpen] = useState(false);
+  const [pendingLiveId, setPendingLiveId] = useState('');
+  const [liveId, setLiveId] = useState('');
+  const [forceLive, setForceLive] = useState(false);
 
   // Hook de notificaciones
   const {
@@ -25,6 +30,9 @@ const App = () => {
     notifyEventSoon
   } = useNotifications();
 
+
+
+  
   // Configuración de fechas del evento
   const EVENT_DATE = new Date('2025-08-10T18:00:00-04:00');
   const SOON_TIME = new Date('2025-08-10T16:00:00-04:00');
@@ -34,8 +42,67 @@ const App = () => {
     setLanguage(e.target.value);
   };
 
+  // Global keyboard shortcut: Ctrl+. / Cmd+.
+  useEffect(() => {
+    const handleKeydown = (e) => {
+      const key = e.key;
+      const isModifier = e.ctrlKey || e.metaKey;
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      const isTyping = activeTag === 'input' || activeTag === 'textarea' || document.activeElement?.isContentEditable;
+
+      // Shortcut should work even while typing
+      if (isModifier && key === '.') {
+        e.preventDefault();
+        setIsLiveIdModalOpen(true);
+        // Select existing text for quick replace
+        setTimeout(() => {
+          const input = document.getElementById('live-id-input');
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 0);
+        return;
+      }
+
+      // Close modal with Escape
+      if (isLiveIdModalOpen && key === 'Escape') {
+        e.preventDefault();
+        setIsLiveIdModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeydown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeydown, { capture: true });
+  }, [isLiveIdModalOpen]);
+
+  const applyLiveId = () => {
+    const id = pendingLiveId.trim();
+    if (!id) return;
+    setLiveId(id);
+    setForceLive(true);
+    setEventStatus('LIVE');
+    setIsLiveIdModalOpen(false);
+    // Scroll to live section shortly after DOM updates
+    setTimeout(() => {
+      document.getElementById('live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const closeModal = () => {
+    setIsLiveIdModalOpen(false);
+    setPendingLiveId('');
+    // Reset forceLive after a delay to allow component to re-mount cleanly
+    setTimeout(() => {
+      setForceLive(false);
+      setLiveId('');
+    }, 100);
+  };
+
   // Función para determinar el estado del evento
   const getEventStatus = () => {
+    // Si hay override manual, siempre LIVE
+    if (forceLive) return 'LIVE';
+
     const now = new Date();
     const currentTime = now.getTime();
     
@@ -120,8 +187,15 @@ const App = () => {
             <div id="countdown" className="order-1">
               <PentecostesCountdown language={language} isLive={true} priority="urgent" />
             </div>
-            <div id="live" className="order-2">
-              <PentecostesLive language={language} priority="high" autoFocus={true} />
+            <div className="order-2">
+              <PentecostesLive 
+                key={`live-${liveId}-${forceLive}`}
+                language={language} 
+                priority="high" 
+                autoFocus={true} 
+                liveId={liveId} 
+                forceLive={forceLive} 
+              />
             </div>
             <div id="hero" className="order-3">
               <PentecostesHero language={language} />
@@ -142,8 +216,14 @@ const App = () => {
             <div id="countdown" className="order-1">
               <PentecostesCountdown language={language} isEventDay={true} priority="high" />
             </div>
-            <div id="live" className="order-2">
-              <PentecostesLive language={language} priority="high" />
+            <div className="order-2">
+              <PentecostesLive 
+                key={`live-${liveId}-${forceLive}`}
+                language={language} 
+                priority="high" 
+                liveId={liveId} 
+                forceLive={forceLive} 
+              />
             </div>
             <div id="hero" className="order-3">
               <PentecostesHero language={language} />
@@ -164,8 +244,13 @@ const App = () => {
             <div id="hero" className="order-1">
               <PentecostesHero language={language} />
             </div>
-            <div id="live" className="order-2">
-              <PentecostesLive language={language} />
+            <div className="order-2">
+              <PentecostesLive 
+                key={`live-${liveId}-${forceLive}`}
+                language={language} 
+                liveId={liveId} 
+                forceLive={forceLive} 
+              />
             </div>
             <div id="multivision" className="order-3">
               <MultivisionSection language={language} />
@@ -189,6 +274,38 @@ const App = () => {
         language={language} 
         compact={eventStatus === 'LIVE' || eventStatus === 'EVENT_DAY'} 
       />
+
+      {/* Modal para ingresar ID de YouTube Live (Ctrl+. / Cmd+.) */}
+      {isLiveIdModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70" onClick={closeModal} />
+          <div className="relative z-[81] w-full max-w-md mx-auto bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-white text-lg font-bold">Activar Live manualmente</h3>
+                <p className="text-gray-400 text-sm">Pega el ID del stream de YouTube y presiona Enter</p>
+              </div>
+              <button onClick={closeModal} className="text-gray-400 hover:text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <input
+              id="live-id-input"
+              type="text"
+              autoComplete="off"
+              placeholder="Ej: fxJ1IMMnyVM"
+              value={pendingLiveId}
+              onChange={(e) => setPendingLiveId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyLiveId(); } }}
+              className="w-full px-4 py-3 rounded-xl bg-black/50 border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-600 outline-none text-white placeholder-gray-500"
+            />
+            <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
+              <span>Atajo: Ctrl+. / Cmd+.</span>
+              <button onClick={applyLiveId} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-500">Activar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Banner de solicitud de notificaciones */}
       {showNotificationBanner && (

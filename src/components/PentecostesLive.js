@@ -13,14 +13,19 @@ const PentecostesLive = ({
   language,
   priority = "normal",
   autoFocus = false,
+  liveId,
+  forceLive = false,
 }) => {
   // Configuración del evento
   const EVENT_DATE = new Date("2025-08-10T18:00:00-04:00");
   const SOON_TIME = new Date("2025-08-10T16:00:00-04:00");
   const LIVE_TIME = new Date("2025-08-10T17:50:00-04:00");
   // Videos
-  const YOUTUBE_LIVE_ID = "fxJ1IMMnyVM"; // Reemplaza con tu Stream ID de YouTube
-  const YOUTUBE_LIVE_URL = `https://www.youtube.com/embed/${YOUTUBE_LIVE_ID}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1`;
+  const selectedYouTubeId = (liveId && liveId.trim()) ? liveId.trim() : "fxJ1IMMnyVM";
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const [useNoCookieDomain, setUseNoCookieDomain] = useState(false);
+  const youtubeDomain = useNoCookieDomain ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
+  const YOUTUBE_LIVE_URL = `${youtubeDomain}/embed/${selectedYouTubeId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(appOrigin)}`;
   const VIMEO_PROMO_ID = "1101559705"; // Video promocional de Vimeo
   
   // Variable para mostrar información del evento (cambiar a true el día del evento)
@@ -122,7 +127,7 @@ const PentecostesLive = ({
   };
 
   // Variable para forzar modo live durante pruebas
-  const FORCE_LIVE_MODE = false; // Cambiar a true para comportamiento de pruebas
+  const FORCE_LIVE_MODE = forceLive; // Permitir forzar modo live desde props
 
   // Función para determinar el estado inicial
   const getInitialStreamStatus = () => {
@@ -174,31 +179,67 @@ const PentecostesLive = ({
     const timer = setInterval(checkStreamStatus, 60000);
 
     return () => clearInterval(timer);
-  }, [streamStatus]);
+  }, [streamStatus, forceLive]);
+
+  // Forzar estado live inmediatamente cuando se active forceLive
+  useEffect(() => {
+    if (forceLive) {
+      setStreamStatus('live');
+    }
+  }, [forceLive]);
+
+  // Si el vivo no carga, reintentar con dominio no-cookie
+  useEffect(() => {
+    if (streamStatus !== 'live') return;
+    setVideoLoaded(false);
+    setUseNoCookieDomain(false);
+    const t = setTimeout(() => {
+      if (!videoLoaded) setUseNoCookieDomain(true);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [streamStatus, selectedYouTubeId]);
 
   useEffect(() => {
-    if (prefersReducedMotion) return;
-    if (!sectionRef.current) return;
+    if (priority === 'high') return undefined; // Evitar animación cuando es la sección principal
+    if (prefersReducedMotion) return undefined;
+    const element = sectionRef.current;
+    if (!element) return undefined;
+    let animation;
     try {
-      gsap.fromTo(
-        sectionRef.current,
+      animation = gsap.fromTo(
+        element,
         { opacity: 0, y: 80 },
         {
           opacity: 1,
           y: 0,
           duration: 1.2,
           ease: "power3.out",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 80%",
-            end: "bottom 20%",
-            toggleActions: "play none none reverse",
-          },
+          // Evitar ScrollTrigger cuando priority es high para no necesitar scrollear
+          ...(priority === 'high' ? {} : {
+            scrollTrigger: {
+              trigger: element,
+              start: "top 80%",
+              end: "bottom 20%",
+              toggleActions: "play none none reverse",
+            }
+          }),
         },
       );
     } catch (e) {
-      console.error("GSAP animation error:", e, sectionRef.current);
+      console.error("GSAP animation error:", e, element);
     }
+    return () => {
+      if (animation) {
+        try {
+          if (animation.scrollTrigger) {
+            animation.scrollTrigger.kill();
+          }
+          animation.kill();
+        } catch (e) {
+          // noop
+        }
+      }
+    };
   }, [isPlaying]);
 
   // Efecto adicional para manejar la visibilidad usando Intersection Observer
@@ -362,16 +403,19 @@ const PentecostesLive = ({
               {streamStatus === "live" ? (
                 // Video en vivo de YouTube
                 <iframe
+                  key={`yt-${selectedYouTubeId}-${streamStatus}`}
                   src={YOUTUBE_LIVE_URL}
                   className="w-full h-full"
                   allowFullScreen
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"
                   title="Pentecostés 2025 - Transmisión en Vivo"
+                  onLoad={() => setVideoLoaded(true)}
                 />
               ) : (
                 // Video promocional de Vimeo
                 <iframe
+                  key={`vimeo-promo-${VIMEO_PROMO_ID}`}
                   src={`https://player.vimeo.com/video/${VIMEO_PROMO_ID}?h=1234567890&autoplay=1&loop=1&muted=1&controls=0&background=1&title=0&byline=0&portrait=0`}
                   className="w-full h-full"
                   allowFullScreen
@@ -412,10 +456,10 @@ const PentecostesLive = ({
               {/* Indicador de live normal */}
               {!isFullscreen && streamStatus === "live" && (
                 <div className="absolute top-6 right-6">
-                  <span className={`flex items-center ${priority === 'high' ? 'bg-red-600 px-8 py-4 text-lg' : 'bg-red-600 px-6 py-3 text-sm'} rounded-full font-bold`}>
+                  {/* <span className={`flex items-center ${priority === 'high' ? 'bg-red-600 px-8 py-4 text-lg' : 'bg-red-600 px-6 py-3 text-sm'} rounded-full font-bold`}>
                     <span className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
                     {texts[language].liveNow}
-                  </span>
+                  </span> */}
                 </div>
               )}
               {/* Botón de fullscreen para live */}
@@ -430,6 +474,12 @@ const PentecostesLive = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                     </svg>
                   </button>
+                </div>
+              )}
+              {/* Indicador de cargando para live */}
+              {streamStatus === 'live' && !videoLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-14 h-14 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </div>

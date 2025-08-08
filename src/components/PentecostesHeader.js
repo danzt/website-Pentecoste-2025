@@ -43,6 +43,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
 
   // Sincronizar estado con ref
   useEffect(() => {
+    if (compact) return; // Evitar inicialización pesada en modo compacto
     showEventLogoStateRef.current = showEventLogo;
   }, [showEventLogo]);
 
@@ -102,7 +103,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
       ScrollTrigger.clearMatchMedia();
       ScrollTrigger.refresh();
     };
-  }, []);
+  }, [compact]);
 
   // 2. DETECCIÓN DE DISPOSITIVO MÓVIL
   useEffect(() => {
@@ -211,6 +212,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
 
   // Efecto para precargar el SDK de Vimeo
   useEffect(() => {
+    if (compact) return; // No precargar SDK en modo compacto
     const preloadVimeoSDK = async () => {
       try {
         if (!window.Vimeo) {
@@ -229,10 +231,11 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
     };
 
     preloadVimeoSDK();
-  }, []);
+  }, [compact]);
 
   // Efecto para precargar el video
   useEffect(() => {
+    if (compact) return; // Evitar precarga de video en modo compacto
     const preloadVideo = () => {
       const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
       const preloadLink = document.createElement('link');
@@ -254,10 +257,11 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
         clearTimeout(preloadTimeoutRef.current);
       }
     };
-  }, [isMobile]);
+  }, [isMobile, compact]);
 
   // 5. INICIALIZAR REPRODUCTOR DE VIMEO
   useEffect(() => {
+    if (compact) return; // No inicializar reproductor en modo compacto
     const initVimeoPlayer = async () => {
       try {
         // 1. Limpiar cualquier instancia previa
@@ -367,10 +371,11 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
         }
       }
     };
-  }, [isMobile, isPreloading]);
+  }, [isMobile, isPreloading, compact]);
 
   // 6. EFECTO CINEMATOGRÁFICO PRINCIPAL
   useEffect(() => {
+    if (compact) return; // Omitir animaciones cinematográficas en modo compacto
     if (!playerReady && !isMobile) return;
 
     if (masterTimelineRef.current) masterTimelineRef.current.kill();
@@ -379,7 +384,8 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
     const initPlayerAndTimeline = async () => {
       try {
         const videoId = isMobile ? MOBILE_VIMEO_VIDEO_ID : VIMEO_VIDEO_ID;
-        const videoDuration = isMobile ? 8 : await playerRef.current?.getDuration() || 8;
+        const rawDuration = playerRef.current ? await playerRef.current.getDuration().catch(() => 8) : 8;
+        const videoDuration = isMobile ? 8 : (rawDuration || 8);
         
         setShowTitle(true);
         setShowVideo(true);
@@ -388,15 +394,21 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
 
         masterTimelineRef.current = gsap.timeline({
           paused: true,
-          onStart: () => {
-            setShowTitle(true);
-            setShowVideo(true);
-            setShowEventLogo(false);
-            setVideoStarted(false);
-            gsap.set(eventLogoRef.current, { opacity: 0, scale: 0.5, y: "50px" });
-            gsap.set(titleRef.current, { opacity: 0, y: "30px" });
-            gsap.set(subtitleRef.current, { opacity: 0, y: "20px" });
-          },
+            onStart: () => {
+              setShowTitle(true);
+              setShowVideo(true);
+              setShowEventLogo(false);
+              setVideoStarted(false);
+              if (eventLogoRef.current) {
+                gsap.set(eventLogoRef.current, { opacity: 0, scale: 0.5, y: "50px" });
+              }
+              if (titleRef.current) {
+                gsap.set(titleRef.current, { opacity: 0, y: "30px" });
+              }
+              if (subtitleRef.current) {
+                gsap.set(subtitleRef.current, { opacity: 0, y: "20px" });
+              }
+            },
         });
 
         // Animación común para móvil y desktop
@@ -428,10 +440,12 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
               setShowVideo(false);
               setShowEventLogo(true);
               setShowTitle(true);
-              gsap.set([titleRef.current, subtitleRef.current], { display: "block", opacity: 0 });
+              if (titleRef.current || subtitleRef.current) {
+                gsap.set([titleRef.current, subtitleRef.current].filter(Boolean), { display: "block", opacity: 0 });
+              }
             })
-            .to(eventLogoRef.current, { opacity: 1, scale: 1.2, y: "0px", duration: 1, ease: "power3.out" }, "logoIn")
-            .to(titleRef.current, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
+            .to(eventLogoRef.current ? eventLogoRef.current : {}, { opacity: 1, scale: 1.2, y: "0px", duration: 1, ease: "power3.out" }, "logoIn")
+            .to(titleRef.current ? titleRef.current : {}, { opacity: 1, y: "0px", duration: 1, ease: "power3.out" }, "logoIn");
         }
 
         masterTimelineRef.current.play();
@@ -448,12 +462,14 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
         masterTimelineRef.current.kill();
         masterTimelineRef.current = null;
       }
-      gsap.killTweensOf([titleRef.current, subtitleRef.current, eventLogoRef.current]);
+      const targets = [titleRef.current, subtitleRef.current, eventLogoRef.current].filter(Boolean);
+      if (targets.length) gsap.killTweensOf(targets);
     };
-  }, [playerReady, isMobile]);
+  }, [playerReady, isMobile, compact]);
 
   // 7. SCROLLTRIGGER PARA REINICIAR ANIMACIÓN DEL HEADER
   useEffect(() => {
+    if (compact) return; // Omitir ScrollTrigger en modo compacto
     if (!headerRef.current) return;
 
     const st = ScrollTrigger.create({
@@ -523,7 +539,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
     return () => {
       if (st) st.kill();
     };
-  }, [playerReady, isMobile]);
+  }, [playerReady, isMobile, compact]);
 
   // --- FUNCIONES DE NAVEGACIÓN ---
   const scrollToSection = (e, id) => {
@@ -551,7 +567,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
   return (
     <header
       ref={headerRef}
-      className={`relative w-full ${compact ? 'h-32' : 'h-screen'} overflow-hidden z-30`}
+      className={`relative w-full ${compact ? 'h-16 md:h-20' : 'h-screen'} overflow-hidden z-30`}
     >
       {/* Video de fondo - solo si no es compacto */}
       {!compact && (
@@ -569,16 +585,16 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
         </div>
       )}
 
-      {/* Fondo sólido para modo compacto */}
+      {/* Fondo para modo compacto: sutil y no intrusivo */}
       {compact && (
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-900 to-blue-900" />
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       )}
 
       {/* Navbar */}
       <nav
         ref={navRef}
-        className={`${compact ? 'relative' : 'fixed'} top-0 left-0 w-full px-6 py-1 flex justify-between items-center z-50`}
-        style={{ backgroundColor: compact ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0)', backdropFilter: compact ? 'blur(10px)' : 'none' }}
+        className={`fixed top-0 left-0 w-full px-6 py-2 flex justify-between items-center z-50`}
+        style={{ backgroundColor: compact ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0)', backdropFilter: compact ? 'blur(8px)' : 'none', borderBottom: compact ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
       >
         <div className="flex items-center">
           <img
@@ -602,7 +618,17 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
               {item}
             </a>
           ))}
-
+          {compact && (
+            <a
+              href="#live"
+              onClick={(e) => scrollToSection(e, 'live')}
+              className="ml-2 inline-flex items-center gap-2 bg-red-600/90 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow transition-colors"
+              title="Ver transmisión en vivo"
+            >
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              EN VIVO
+            </a>
+          )}
           <select
             onChange={onLanguageChange}
             defaultValue={language}
@@ -681,17 +707,7 @@ const PentecostesHeader = ({ onLanguageChange, language, compact = false }) => {
         </div>
       )}
 
-      {/* Contenido compacto para el día del evento */}
-      {compact && (
-        <div className="header-content relative z-20 h-full flex flex-col justify-center items-center text-center px-6">
-          <h1 className="text-white text-2xl md:text-3xl font-bold">
-            Pentecostés 2025
-          </h1>
-          <p className="text-white text-sm md:text-base opacity-80">
-            La Fiesta del Espíritu
-          </p>
-        </div>
-      )}
+      {/* En modo compacto no mostramos hero dentro del header para no romper el diseño */}
     </header>
   );
 };

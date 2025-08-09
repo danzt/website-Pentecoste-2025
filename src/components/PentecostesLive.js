@@ -21,11 +21,11 @@ const PentecostesLive = ({
   const SOON_TIME = new Date("2025-08-10T16:00:00-04:00");
   const LIVE_TIME = new Date("2025-08-10T17:50:00-04:00");
   // Videos
-  const selectedYouTubeId = (liveId && liveId.trim()) ? liveId.trim() : "fxJ1IMMnyVM";
+  const selectedYouTubeId = (liveId && liveId.trim()) ? liveId.trim() : null;
   const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const [useNoCookieDomain, setUseNoCookieDomain] = useState(false);
   const youtubeDomain = useNoCookieDomain ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
-  const YOUTUBE_LIVE_URL = `${youtubeDomain}/embed/${selectedYouTubeId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(appOrigin)}`;
+  const YOUTUBE_LIVE_URL = selectedYouTubeId ? `${youtubeDomain}/embed/${selectedYouTubeId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(appOrigin)}` : null;
   const VIMEO_PROMO_ID = "1101559705"; // Video promocional de Vimeo
   
   // Variable para mostrar información del evento (cambiar a true el día del evento)
@@ -127,7 +127,7 @@ const PentecostesLive = ({
   };
 
   // Variable para forzar modo live durante pruebas
-  const FORCE_LIVE_MODE = forceLive; // Permitir forzar modo live desde props
+  const FORCE_LIVE_MODE = !!(forceLive && selectedYouTubeId); // Forzar live solo si hay ID válido
 
   // Función para determinar el estado inicial
   const getInitialStreamStatus = () => {
@@ -179,18 +179,18 @@ const PentecostesLive = ({
     const timer = setInterval(checkStreamStatus, 60000);
 
     return () => clearInterval(timer);
-  }, [streamStatus, forceLive]);
+  }, [streamStatus, forceLive, selectedYouTubeId]);
 
   // Forzar estado live inmediatamente cuando se active forceLive
   useEffect(() => {
-    if (forceLive) {
+    if (forceLive && selectedYouTubeId) {
       setStreamStatus('live');
     }
-  }, [forceLive]);
+  }, [forceLive, selectedYouTubeId]);
 
   // Si el vivo no carga, reintentar con dominio no-cookie
   useEffect(() => {
-    if (streamStatus !== 'live') return;
+    if (streamStatus !== 'live' || !selectedYouTubeId) return;
     setVideoLoaded(false);
     setUseNoCookieDomain(false);
     const t = setTimeout(() => {
@@ -400,7 +400,7 @@ const PentecostesLive = ({
             className={`w-full ${getVideoContainerClasses()} ${isFullscreen ? 'fixed inset-0 z-[9999] bg-black rounded-none border-none' : ''}`}
           >
             <div className="w-full h-full relative">
-              {streamStatus === "live" ? (
+              {streamStatus === "live" && selectedYouTubeId ? (
                 // Video en vivo de YouTube
                 <iframe
                   key={`yt-${selectedYouTubeId}-${streamStatus}`}

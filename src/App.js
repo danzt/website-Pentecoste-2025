@@ -20,6 +20,25 @@ const App = () => {
   const [liveId, setLiveId] = useState('');
   const [forceLive, setForceLive] = useState(false);
 
+  // Init from environment (Vercel) once on mount
+  useEffect(() => {
+    const envId = process.env.REACT_APP_YOUTUBE_LIVE_ID;
+    const envForce = process.env.REACT_APP_FORCE_LIVE;
+
+    if (envId && typeof envId === 'string' && envId.trim()) {
+      setLiveId(envId.trim());
+      setForceLive(true);
+      setEventStatus('LIVE');
+      // Scroll to live after mount
+      setTimeout(() => {
+        document.getElementById('live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    } else if (envForce === 'true') {
+      setForceLive(true);
+      setEventStatus('LIVE');
+    }
+  }, []);
+
   // Hook de notificaciones
   const {
     isSupported,

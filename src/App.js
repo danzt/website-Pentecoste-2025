@@ -19,6 +19,15 @@ const App = () => {
   const [pendingLiveId, setPendingLiveId] = useState('');
   const [liveId, setLiveId] = useState('');
   const [forceLive, setForceLive] = useState(false);
+  const [showEnvDebug, setShowEnvDebug] = useState(false);
+
+  // Enable env debug overlay via query param ?debugEnv=1
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('debugEnv') === '1') setShowEnvDebug(true);
+    } catch {}
+  }, []);
 
   // Init from environment (Vercel) once on mount
   useEffect(() => {
@@ -409,10 +418,22 @@ const App = () => {
       )}
 
       {/* Debug info técnico - solo en desarrollo */}
-      {process.env.NODE_ENV === 'development' && (
+      {(process.env.NODE_ENV === 'development') && (
         <div className="fixed bottom-4 right-4 z-[60]">
           <div className="bg-black/80 text-gray-400 px-2 py-1 rounded text-xs border border-gray-700">
             Debug: {eventStatus} | Notifications: {hasPermission ? '✅' : '❌'}
+          </div>
+        </div>
+      )}
+
+      {/* Env debug (safe): only REACT_APP_* and only if ?debugEnv=1 */}
+      {showEnvDebug && (
+        <div className="fixed bottom-4 left-4 z-[60]">
+          <div className="bg-black/80 text-gray-300 px-3 py-2 rounded text-xs border border-gray-700 space-y-1 max-w-xs">
+            <div className="font-bold text-white">Env (client)</div>
+            <div>REACT_APP_YOUTUBE_LIVE_ID: <span className="text-purple-300">{process.env.REACT_APP_YOUTUBE_LIVE_ID || '(empty)'}</span></div>
+            <div>REACT_APP_FORCE_LIVE: <span className="text-purple-300">{process.env.REACT_APP_FORCE_LIVE || '(unset)'}</span></div>
+            <button onClick={() => setShowEnvDebug(false)} className="mt-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded">ocultar</button>
           </div>
         </div>
       )}

@@ -27,15 +27,14 @@ const App = () => {
 
     if (envId && typeof envId === 'string' && envId.trim()) {
       setLiveId(envId.trim());
-      setForceLive(true);
-      setEventStatus('LIVE');
+      if (envForce === 'true') {
+        setForceLive(true);
+        setEventStatus('LIVE');
+      }
       // Scroll to live after mount
       setTimeout(() => {
         document.getElementById('live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 0);
-    } else if (envForce === 'true') {
-      setForceLive(true);
-      setEventStatus('LIVE');
     }
   }, []);
 
@@ -119,8 +118,8 @@ const App = () => {
 
   // Función para determinar el estado del evento
   const getEventStatus = () => {
-    // Si hay override manual, siempre LIVE
-    if (forceLive) return 'LIVE';
+    // Si hay override manual con ID válido, siempre LIVE
+    if (forceLive && liveId) return 'LIVE';
 
     const now = new Date();
     const currentTime = now.getTime();
@@ -171,7 +170,7 @@ const App = () => {
     const timer = setInterval(updateEventStatus, 30000);
 
     return () => clearInterval(timer);
-  }, [eventStatus, hasPermission, notifyEventLive, notifyEventSoon]);
+  }, [eventStatus, hasPermission, notifyEventLive, notifyEventSoon, liveId, forceLive]);
 
   // Mostrar banner de notificaciones si no tenemos permisos
   useEffect(() => {

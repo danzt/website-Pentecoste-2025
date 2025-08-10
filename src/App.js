@@ -50,7 +50,7 @@ const App = () => {
   // For development: set static live ID and force LIVE mode
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      setLiveId('yf5NOyy1SXU');
+      setLiveId('iez4NoWEnck');
       setForceLive(true);
       setEventStatus('LIVE');
       // Scroll to live after mount

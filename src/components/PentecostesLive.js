@@ -122,7 +122,7 @@ const PentecostesLive = ({
   };
 
   // Variable para forzar modo live durante pruebas
-  const FORCE_LIVE_MODE = true; // Cambiar a true para forzar live siempre
+  const FORCE_LIVE_MODE = YOUTUBE_LIVE_ID ? true : false; // Solo forzar live si hay ID
 
   // Función para determinar el estado inicial
   const getInitialStreamStatus = () => {

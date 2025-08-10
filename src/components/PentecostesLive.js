@@ -13,19 +13,14 @@ const PentecostesLive = ({
   language,
   priority = "normal",
   autoFocus = false,
-  liveId,
-  forceLive = false,
 }) => {
   // Configuración del evento
   const EVENT_DATE = new Date("2025-08-10T18:00:00-04:00");
   const SOON_TIME = new Date("2025-08-10T16:00:00-04:00");
   const LIVE_TIME = new Date("2025-08-10T17:50:00-04:00");
-  // Videos
-  const selectedYouTubeId = (liveId && liveId.trim()) ? liveId.trim() : null;
-  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-  const [useNoCookieDomain, setUseNoCookieDomain] = useState(false);
-  const youtubeDomain = useNoCookieDomain ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
-  const YOUTUBE_LIVE_URL = selectedYouTubeId ? `${youtubeDomain}/embed/${selectedYouTubeId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(appOrigin)}` : null;
+  // Videos - ID estático directo
+  const YOUTUBE_LIVE_ID = "fxJ1IMMnyVM"; // Cambiar este ID cuando sea necesario
+  const YOUTUBE_LIVE_URL = `https://www.youtube.com/embed/${YOUTUBE_LIVE_ID}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`;
   const VIMEO_PROMO_ID = "1101559705"; // Video promocional de Vimeo
   
   // Variable para mostrar información del evento (cambiar a true el día del evento)
@@ -127,7 +122,7 @@ const PentecostesLive = ({
   };
 
   // Variable para forzar modo live durante pruebas
-  const FORCE_LIVE_MODE = !!(forceLive && selectedYouTubeId); // Forzar live solo si hay ID válido
+  const FORCE_LIVE_MODE = true; // Cambiar a true para forzar live siempre
 
   // Función para determinar el estado inicial
   const getInitialStreamStatus = () => {
@@ -179,25 +174,7 @@ const PentecostesLive = ({
     const timer = setInterval(checkStreamStatus, 60000);
 
     return () => clearInterval(timer);
-  }, [streamStatus, forceLive, selectedYouTubeId]);
-
-  // Forzar estado live inmediatamente cuando se active forceLive
-  useEffect(() => {
-    if (forceLive && selectedYouTubeId) {
-      setStreamStatus('live');
-    }
-  }, [forceLive, selectedYouTubeId]);
-
-  // Si el vivo no carga, reintentar con dominio no-cookie
-  useEffect(() => {
-    if (streamStatus !== 'live' || !selectedYouTubeId) return;
-    setVideoLoaded(false);
-    setUseNoCookieDomain(false);
-    const t = setTimeout(() => {
-      if (!videoLoaded) setUseNoCookieDomain(true);
-    }, 3000);
-    return () => clearTimeout(t);
-  }, [streamStatus, selectedYouTubeId]);
+  }, [streamStatus]);
 
   useEffect(() => {
     if (priority === 'high') return undefined; // Evitar animación cuando es la sección principal
@@ -400,10 +377,10 @@ const PentecostesLive = ({
             className={`w-full ${getVideoContainerClasses()} ${isFullscreen ? 'fixed inset-0 z-[9999] bg-black rounded-none border-none' : ''}`}
           >
             <div className="w-full h-full relative">
-              {streamStatus === "live" && selectedYouTubeId ? (
+              {streamStatus === "live" ? (
                 // Video en vivo de YouTube
                 <iframe
-                  key={`yt-${selectedYouTubeId}-${streamStatus}`}
+                  key={`yt-${YOUTUBE_LIVE_ID}-${streamStatus}`}
                   src={YOUTUBE_LIVE_URL}
                   className="w-full h-full"
                   allowFullScreen

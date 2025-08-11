@@ -47,17 +47,16 @@ const App = () => {
     }
   }, []);
 
-  // For development: set static live ID and force LIVE mode
+  // Set static live ID for all environments
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      setLiveId('iez4NoWEnck');
-      setForceLive(true);
-      setEventStatus('LIVE');
-      // Scroll to live after mount
-      setTimeout(() => {
-        document.getElementById('live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 0);
-    }
+    // Use static live ID for all environments
+    setLiveId('236jzwJt-kw');
+    setForceLive(true);
+    setEventStatus('LIVE');
+    // Scroll to live after mount
+    setTimeout(() => {
+      document.getElementById('live')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
   }, []);
 
   // Hook de notificaciones
@@ -225,9 +224,9 @@ const App = () => {
         return (
           <>
             <div id="countdown" className="order-1">
-              <PentecostesCountdown language={language} isLive={true} priority="urgent" />
+              {/* <PentecostesCountdown language={language} isLive={true} priority="urgent" /> */}
             </div>
-            <div className="order-2">
+            {/* <div className="order-2">
               <PentecostesLive 
                 key={`live-${liveId}-${forceLive}`}
                 language={language} 
@@ -236,7 +235,7 @@ const App = () => {
                 liveId={liveId} 
                 forceLive={forceLive} 
               />
-            </div>
+            </div> */}
             <div id="hero" className="order-3">
               <PentecostesHero language={language} />
             </div>
@@ -253,23 +252,23 @@ const App = () => {
         // Día del evento: Countdown → Live
         return (
           <>
-            <div id="countdown" className="order-1">
+            {/*<div id="countdown" className="order-1">
               <PentecostesCountdown language={language} isEventDay={true} priority="high" />
-            </div>
+            </div>*/}
             <div className="order-2">
-              <PentecostesLive 
+              {/*<PentecostesLive 
                 key={`live-${liveId}-${forceLive}`}
                 language={language} 
                 priority="high" 
                 liveId={liveId} 
                 forceLive={forceLive} 
-              />
+              />*/}
             </div>
             <div id="hero" className="order-3">
               <PentecostesHero language={language} />
             </div>
             <div id="multivision" className="order-4">
-              <MultivisionSection language={language} />
+              {/*<MultivisionSection language={language} />*/}
             </div>
             <div id="gallery" className="order-5">
               <PentecostesGallery language={language} />
@@ -348,7 +347,7 @@ const App = () => {
       )}
 
       {/* Banner de solicitud de notificaciones */}
-      {showNotificationBanner && (
+      {/* {showNotificationBanner && (
         <div className="fixed top-20 left-4 right-4 z-[70]">
           <div className="bg-gradient-to-r from-blue-600/95 to-purple-700/95 backdrop-blur-lg border border-blue-500/30 rounded-xl px-4 py-3 shadow-2xl max-w-md mx-auto">
             <div className="flex items-center space-x-3">
@@ -378,14 +377,14 @@ const App = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Banner informativo para usuarios - solo cuando es relevante */}
-      {eventStatus !== 'NORMAL' && (
+{/*
+      { {eventStatus !== 'NORMAL' && (
         <div className="fixed top-20 right-4 z-[60]">
           <div className="bg-gradient-to-r from-red-600/90 to-purple-800/90 backdrop-blur-lg border border-red-500/30 rounded-xl px-4 py-3 shadow-2xl max-w-sm">
             <div className="flex items-center space-x-3">
-              {/* Ícono pulsante */}
               <div className="flex-shrink-0">
                 {eventStatus === 'LIVE' ? (
                   <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg"></div>
@@ -394,7 +393,6 @@ const App = () => {
                 )}
               </div>
               
-              {/* Mensaje principal */}
               <div className="flex-1">
                 <div className="text-white font-bold text-sm">
                   {eventStatus === 'LIVE' ? (
@@ -412,7 +410,6 @@ const App = () => {
                 </div>
               </div>
               
-              {/* Botón de acción */}
               <button
                 onClick={() => {
                   const targetSection = eventStatus === 'LIVE' ? 'live' : 'countdown';
